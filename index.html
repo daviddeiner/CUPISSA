@@ -28,7 +28,6 @@
       --shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.08);
       --radius: 16px;
       
-      /* Status Colors */
       --status-agendado-bg: #e0f2fe;
       --status-agendado-txt: #0369a1;
       --status-eshoy-bg: #fef08a;
@@ -181,20 +180,15 @@
     .cloud-local { background: #fef3c7; color: #b45309; }
 
     main {
-      max-width: 1300px;
+      max-width: 1350px;
       width: 100%;
       margin: 0 auto;
       padding: 2rem 1rem;
       flex: 1;
     }
 
-    .tab-content {
-      display: none;
-    }
-
-    .tab-content.active {
-      display: block;
-    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
 
     .btn-primary {
       background: linear-gradient(135deg, var(--primary), var(--secondary));
@@ -210,10 +204,7 @@
       box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
     }
 
-    .btn-primary:hover {
-      opacity: 0.95;
-      transform: translateY(-1px);
-    }
+    .btn-primary:hover { opacity: 0.95; transform: translateY(-1px); }
 
     .stats-grid {
       display: grid;
@@ -253,11 +244,7 @@
       letter-spacing: 0.5px;
     }
 
-    .stat-data p {
-      font-size: 1.4rem;
-      font-weight: 800;
-      margin-top: 2px;
-    }
+    .stat-data p { font-size: 1.4rem; font-weight: 800; margin-top: 2px; }
 
     .card {
       background: var(--bg-card);
@@ -283,9 +270,7 @@
       gap: 8px;
     }
 
-    .table-container {
-      overflow-x: auto;
-    }
+    .table-container { overflow-x: auto; }
 
     table {
       width: 100%;
@@ -311,9 +296,7 @@
       vertical-align: middle;
     }
 
-    tr:hover td {
-      background: rgba(99, 102, 241, 0.02);
-    }
+    tr:hover td { background: rgba(99, 102, 241, 0.02); }
 
     .badge {
       padding: 6px 12px;
@@ -364,7 +347,7 @@
       background: var(--bg-card);
       border-radius: var(--radius);
       width: 100%;
-      max-width: 650px;
+      max-width: 680px;
       max-height: 90vh;
       overflow-y: auto;
       border: 1px solid var(--border-color);
@@ -449,6 +432,8 @@
     .btn-delete:hover { background: #fee2e2; }
     .btn-view { color: var(--secondary); }
     .btn-view:hover { background: rgba(168, 85, 247, 0.1); }
+    .btn-edit { color: #0284c7; }
+    .btn-edit:hover { background: #e0f2fe; }
 
     .toast {
       position: fixed;
@@ -567,9 +552,7 @@
                 <th>Acciones</th>
               </tr>
             </thead>
-            <tbody id="tabla-creditos">
-              <!-- Filas dinámicas -->
-            </tbody>
+            <tbody id="tabla-creditos"></tbody>
           </table>
         </div>
       </div>
@@ -624,24 +607,22 @@
               <tr>
                 <th>Cliente</th>
                 <th>Contacto</th>
-                <th>Dirección / Ubicación</th>
-                <th>Fecha Entrega</th>
-                <th>Tipo</th>
-                <th>Producto (Ver)</th>
+                <th>Dirección</th>
+                <th>Fechas</th>
+                <th>Tipo & Total</th>
+                <th>Detalles</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
-            <tbody id="tabla-pedidos">
-              <!-- Filas dinámicas -->
-            </tbody>
+            <tbody id="tabla-pedidos"></tbody>
           </table>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- MODAL: NUEVO CRÉDITO -->
+  <!-- MODAL: NUEVO/EDITAR CRÉDITO -->
   <div class="modal-overlay" id="modalCredito">
     <div class="modal">
       <div class="modal-header">
@@ -691,11 +672,11 @@
     </div>
   </div>
 
-  <!-- MODAL: NUEVO PEDIDO -->
+  <!-- MODAL: NUEVO / EDITAR PEDIDO -->
   <div class="modal-overlay" id="modalPedido">
     <div class="modal">
       <div class="modal-header">
-        <h2 id="modalPedidoTitle">Nuevo Pedido</h2>
+        <h2 id="modalPedidoTitle">Registrar Pedido</h2>
         <button class="btn-action" onclick="closeModal('modalPedido')"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="formPedido" onsubmit="savePedido(event)">
@@ -712,42 +693,61 @@
             </div>
             <div class="form-group">
               <label>Cédula (Opcional)</label>
-              <input type="text" id="ped-cedula" placeholder="Número de documento">
+              <input type="text" id="ped-cedula" placeholder="Cédula">
             </div>
             <div class="form-group">
-              <label>Correo Electrónico (Opcional)</label>
+              <label>Correo (Opcional)</label>
               <input type="email" id="ped-correo" placeholder="correo@ejemplo.com">
             </div>
             <div class="form-group full">
               <label>Dirección Exacta *</label>
-              <input type="text" id="ped-direccion" required placeholder="Calle, Carrera, N° de Casa/Apto">
+              <input type="text" id="ped-direccion" required placeholder="Calle, Carrera, N°">
             </div>
             <div class="form-group">
               <label>Barrio *</label>
-              <input type="text" id="ped-barrio" required placeholder="Ej: El Prado">
+              <input type="text" id="ped-barrio" required placeholder="Barrio">
             </div>
             <div class="form-group">
               <label>Ciudad *</label>
-              <input type="text" id="ped-ciudad" required placeholder="Ej: Barranquilla">
+              <input type="text" id="ped-ciudad" required placeholder="Ciudad">
             </div>
             <div class="form-group">
-              <label>Fecha de Entrega *</label>
-              <input type="date" id="ped-fecha-entrega" required>
-            </div>
-            <div class="form-group">
-              <label>Tipo de Entrega *</label>
-              <select id="ped-tipo" required>
+              <label>Tipo de Pedido *</label>
+              <select id="ped-tipo" onchange="toggleTipoFechas()" required>
+                <option value="Domicilio">Domicilio Local</option>
                 <option value="Envío">Envío Nacional/Empresa</option>
-                <option value="Domicilio" selected>Domicilio Local</option>
               </select>
             </div>
+            <div class="form-group" id="group-fecha-entrega">
+              <label>Fecha de Entrega *</label>
+              <input type="date" id="ped-fecha-entrega">
+            </div>
+            <div class="form-group" id="group-fecha-envio" style="display:none;">
+              <label>Fecha de Envío (Salida) *</label>
+              <input type="date" id="ped-fecha-envio">
+            </div>
+            <div class="form-group" id="group-fecha-llegada" style="display:none;">
+              <label>Fecha Estimada de Entrega *</label>
+              <input type="date" id="ped-fecha-llegada">
+            </div>
+            <div class="form-group">
+              <label>Valor del Producto ($) *</label>
+              <input type="number" id="ped-val-prod" min="0" oninput="calcularTotalPedido()" required value="0">
+            </div>
+            <div class="form-group">
+              <label>Valor del Domicilio/Envío ($) *</label>
+              <input type="number" id="ped-val-dom" min="0" oninput="calcularTotalPedido()" required value="0">
+            </div>
             <div class="form-group full">
-              <label>Foto del Producto (Imagen)</label>
-              <input type="file" id="ped-foto-file" accept="image/*">
+              <label style="color:var(--primary); font-weight:800;">Total del Pedido: $<span id="ped-total-txt">0</span></label>
+            </div>
+            <div class="form-group full">
+              <label>Fotos del Producto (Puedes seleccionar varias imágenes)</label>
+              <input type="file" id="ped-fotos-files" accept="image/*" multiple>
             </div>
             <div class="form-group full">
               <label>Descripción del Producto</label>
-              <textarea id="ped-descripcion" rows="3" placeholder="Detalles, diseño personalizado, colores, etc."></textarea>
+              <textarea id="ped-descripcion" rows="3" placeholder="Detalles, colores, notas del pedido..."></textarea>
             </div>
           </div>
         </div>
@@ -759,22 +759,22 @@
     </div>
   </div>
 
-  <!-- MODAL: VER PRODUCTO Y DESCRIPCIÓN -->
+  <!-- MODAL: VER PRODUCTO Y DESCRIPCIÓN (GALERÍA) -->
   <div class="modal-overlay" id="modalVerProducto">
-    <div class="modal" style="max-width: 450px;">
+    <div class="modal" style="max-width: 550px;">
       <div class="modal-header">
-        <h2>Detalles del Producto</h2>
+        <h2>Detalles del Pedido</h2>
         <button class="btn-action" onclick="closeModal('modalVerProducto')"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="modal-body" style="text-align: center;">
-        <div id="ver-producto-img-container" style="margin-bottom: 1rem; max-height: 250px; overflow: hidden; border-radius: 10px;">
-          <img id="ver-producto-img" src="" alt="Sin foto" style="width: 100%; object-fit: contain; display: none;">
-          <p id="ver-producto-noimg" style="color: var(--text-muted); padding: 2rem; background: var(--bg-main); border-radius: 10px;">Sin imagen adjunta</p>
+      <div class="modal-body">
+        <label style="font-weight:700; margin-bottom:8px; display:block;">Imágenes del Producto:</label>
+        <div id="ver-galeria-imgs" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 1rem;">
+          <!-- Galería dinámica -->
         </div>
-        <div style="text-align: left;">
-          <label style="font-weight: 700;">Descripción:</label>
-          <p id="ver-producto-desc" style="margin-top: 4px; padding: 10px; background: var(--bg-main); border-radius: 8px; font-size: 0.9rem; min-height: 60px;"></p>
-        </div>
+        <p id="ver-noimg" style="color: var(--text-muted); text-align: center; padding: 1rem; background: var(--bg-main); border-radius: 8px; display:none;">Sin imágenes adjuntas</p>
+        
+        <label style="font-weight: 700; display:block; margin-top:10px;">Descripción:</label>
+        <p id="ver-producto-desc" style="margin-top: 4px; padding: 12px; background: var(--bg-main); border-radius: 8px; font-size: 0.9rem; min-height: 70px;"></p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn-primary" onclick="closeModal('modalVerProducto')">Cerrar</button>
@@ -785,11 +785,10 @@
   <!-- NOTIFICACIÓN TOAST -->
   <div class="toast" id="toast">
     <i class="fa-solid fa-circle-check" style="color:#16a34a"></i>
-    <span id="toast-msg">Mensaje de notificación</span>
+    <span id="toast-msg">Mensaje</span>
   </div>
 
   <script>
-    // CREDENCIALES DE SUPABASE CONFIGURADAS
     const SB_URL = 'https://lkdxtesgwqoizobxaawp.supabase.co';
     const SB_KEY = 'sb_publishable_Fw-f7SC-4FgTjO3y5XbqRA_Pp0m6oCQ';
 
@@ -801,13 +800,14 @@
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('cred-fecha-entrega').value = todayStr;
       document.getElementById('ped-fecha-entrega').value = todayStr;
+      document.getElementById('ped-fecha-envio').value = todayStr;
+      document.getElementById('ped-fecha-llegada').value = todayStr;
 
       try {
         supabaseClient = supabase.createClient(SB_URL, SB_KEY);
       } catch (e) {
-        console.error("Error inicializando Supabase:", e);
+        console.error(e);
       }
-
       loadData();
     });
 
@@ -833,7 +833,6 @@
           const { data: peds } = await supabaseClient.from('pedidos').select('*');
           if (peds) dbPedidos = peds;
         } catch (err) {
-          console.warn('Error cargando desde Supabase, cargando LocalStorage:', err);
           loadLocal();
         }
       } else {
@@ -858,17 +857,11 @@
     function calculateNextDueDate(startDateStr, frequency, currentCuotaNumber = 1) {
       const parts = startDateStr.split('-');
       let date = new Date(parts[0], parts[1] - 1, parts[2]);
-
       for (let i = 0; i < currentCuotaNumber; i++) {
-        if (frequency === 'Diario') {
-          date.setDate(date.getDate() + 1);
-        } else if (frequency === 'Semanal') {
-          date.setDate(date.getDate() + 7);
-        } else if (frequency === 'Quincenal') {
-          date.setDate(date.getDate() + 15);
-        } else if (frequency === 'Mensual') {
-          date.setMonth(date.getMonth() + 1);
-        }
+        if (frequency === 'Diario') date.setDate(date.getDate() + 1);
+        else if (frequency === 'Semanal') date.setDate(date.getDate() + 7);
+        else if (frequency === 'Quincenal') date.setDate(date.getDate() + 15);
+        else if (frequency === 'Mensual') date.setMonth(date.getMonth() + 1);
       }
       return date.toISOString().split('T')[0];
     }
@@ -891,8 +884,8 @@
       const fecha_entrega = document.getElementById('cred-fecha-entrega').value;
       const num_cuotas = parseInt(document.getElementById('cred-num-cuotas').value);
       const valor_cuota = parseFloat(document.getElementById('cred-valor-cuota').value);
-
       const total_credito = num_cuotas * valor_cuota;
+
       const item = {
         cliente, telefono, frecuencia, fecha_entrega, num_cuotas,
         cuotas_pendientes: num_cuotas, valor_cuota, total_credito, pagado: 0,
@@ -900,22 +893,27 @@
       };
 
       if (supabaseClient) {
-        await supabaseClient.from('creditos').insert([item]);
+        if (id) await supabaseClient.from('creditos').update(item).eq('id', id);
+        else await supabaseClient.from('creditos').insert([item]);
       } else {
-        item.id = Date.now().toString();
-        dbCreditos.unshift(item);
+        item.id = id || Date.now().toString();
+        if (id) {
+          const idx = dbCreditos.findIndex(c => c.id === id);
+          if (idx !== -1) dbCreditos[idx] = { ...dbCreditos[idx], ...item };
+        } else {
+          dbCreditos.unshift(item);
+        }
         saveDataLocal();
       }
 
       closeModal('modalCredito');
-      showToast('Crédito guardado exitosamente');
+      showToast('Crédito guardado');
       loadData();
     }
 
     async function registerPayment(id) {
       const item = dbCreditos.find(c => c.id === id);
       if (!item || item.cuotas_pendientes <= 0) return;
-
       item.cuotas_pendientes -= 1;
       item.pagado += item.valor_cuota;
       item.deuda_actual -= item.valor_cuota;
@@ -924,29 +922,21 @@
         item.deuda_actual = 0;
         item.estado = 'Finalizado';
       } else {
-        const cuotasPagadas = item.num_cuotas - item.cuotas_pendientes;
-        item.proximo_vencimiento = calculateNextDueDate(item.fecha_entrega, item.frecuencia, cuotasPagadas + 1);
+        const pagadas = item.num_cuotas - item.cuotas_pendientes;
+        item.proximo_vencimiento = calculateNextDueDate(item.fecha_entrega, item.frecuencia, pagadas + 1);
       }
 
-      if (supabaseClient) {
-        await supabaseClient.from('creditos').update(item).eq('id', id);
-      } else {
-        saveDataLocal();
-      }
+      if (supabaseClient) await supabaseClient.from('creditos').update(item).eq('id', id);
+      else saveDataLocal();
 
-      showToast(`Pago registrado para ${item.cliente}`);
+      showToast('Pago registrado');
       renderCreditos();
     }
 
     async function deleteCredito(id) {
-      if (!confirm('¿Estás seguro de eliminar este crédito?')) return;
-      if (supabaseClient) {
-        await supabaseClient.from('creditos').delete().eq('id', id);
-      } else {
-        dbCreditos = dbCreditos.filter(c => c.id !== id);
-        saveDataLocal();
-      }
-      showToast('Crédito eliminado');
+      if (!confirm('¿Eliminar crédito?')) return;
+      if (supabaseClient) await supabaseClient.from('creditos').delete().eq('id', id);
+      else { dbCreditos = dbCreditos.filter(c => c.id !== id); saveDataLocal(); }
       loadData();
     }
 
@@ -956,9 +946,7 @@
       let totalCar = 0, totalDeuda = 0, totalPagado = 0, activosCount = 0;
 
       dbCreditos.forEach(c => {
-        totalCar += c.total_credito;
-        totalDeuda += c.deuda_actual;
-        totalPagado += c.pagado;
+        totalCar += c.total_credito; totalDeuda += c.deuda_actual; totalPagado += c.pagado;
         if (c.estado === 'Activo') activosCount++;
 
         const tr = document.createElement('tr');
@@ -987,13 +975,35 @@
     }
 
     // --- PEDIDOS ---
+    function toggleTipoFechas() {
+      const tipo = document.getElementById('ped-tipo').value;
+      if (tipo === 'Envío') {
+        document.getElementById('group-fecha-entrega').style.display = 'none';
+        document.getElementById('group-fecha-envio').style.display = 'flex';
+        document.getElementById('group-fecha-llegada').style.display = 'flex';
+      } else {
+        document.getElementById('group-fecha-entrega').style.display = 'flex';
+        document.getElementById('group-fecha-envio').style.display = 'none';
+        document.getElementById('group-fecha-llegada').style.display = 'none';
+      }
+    }
+
+    function calcularTotalPedido() {
+      const p = parseFloat(document.getElementById('ped-val-prod').value) || 0;
+      const d = parseFloat(document.getElementById('ped-val-dom').value) || 0;
+      document.getElementById('ped-total-txt').innerText = formatMoney(p + d);
+    }
+
     function updatePedidosAutoStatus() {
       dbPedidos.forEach(p => {
         if (p.estado !== 'Entregado' && p.estado !== 'Cancelado' && p.estado !== 'En Camino') {
-          if (p.fecha_entrega === todayStr) {
-            p.estado = 'Es Hoy';
-          } else if (p.fecha_entrega > todayStr) {
-            p.estado = 'Agendado';
+          if (p.tipo_entrega === 'Envío') {
+            if (p.fecha_envio === todayStr) p.estado = 'En Camino';
+            else if (p.fecha_llegada === todayStr) p.estado = 'Es Hoy';
+            else if (p.fecha_envio > todayStr) p.estado = 'Agendado';
+          } else {
+            if (p.fecha_entrega === todayStr) p.estado = 'Es Hoy';
+            else if (p.fecha_entrega > todayStr) p.estado = 'Agendado';
           }
         }
       });
@@ -1003,12 +1013,50 @@
       document.getElementById('formPedido').reset();
       document.getElementById('pedido-id').value = '';
       document.getElementById('ped-fecha-entrega').value = todayStr;
-      document.getElementById('modalPedidoTitle').innerText = 'Nuevo Pedido';
+      document.getElementById('ped-fecha-envio').value = todayStr;
+      document.getElementById('ped-fecha-llegada').value = todayStr;
+      document.getElementById('ped-val-prod').value = 0;
+      document.getElementById('ped-val-dom').value = 0;
+      calcularTotalPedido();
+      toggleTipoFechas();
+      document.getElementById('modalPedidoTitle').innerText = 'Registrar Pedido';
+      document.getElementById('modalPedido').classList.add('active');
+    }
+
+    function editPedido(id) {
+      const p = dbPedidos.find(item => item.id === id);
+      if (!p) return;
+
+      document.getElementById('pedido-id').value = p.id;
+      document.getElementById('ped-nombre').value = p.nombre_cliente;
+      document.getElementById('ped-telefono').value = p.telefono;
+      document.getElementById('ped-cedula').value = p.cedula || '';
+      document.getElementById('ped-correo').value = p.correo || '';
+      document.getElementById('ped-direccion').value = p.direccion;
+      document.getElementById('ped-barrio').value = p.barrio;
+      document.getElementById('ped-ciudad').value = p.ciudad;
+      document.getElementById('ped-tipo').value = p.tipo_entrega;
+      toggleTipoFechas();
+
+      if (p.tipo_entrega === 'Envío') {
+        document.getElementById('ped-fecha-envio').value = p.fecha_envio || todayStr;
+        document.getElementById('ped-fecha-llegada').value = p.fecha_entrega || todayStr;
+      } else {
+        document.getElementById('ped-fecha-entrega').value = p.fecha_entrega || todayStr;
+      }
+
+      document.getElementById('ped-val-prod').value = p.valor_producto || 0;
+      document.getElementById('ped-val-dom').value = p.valor_domicilio || 0;
+      document.getElementById('ped-descripcion').value = p.descripcion || '';
+      calcularTotalPedido();
+
+      document.getElementById('modalPedidoTitle').innerText = 'Editar Pedido';
       document.getElementById('modalPedido').classList.add('active');
     }
 
     async function savePedido(e) {
       e.preventDefault();
+      const id = document.getElementById('pedido-id').value;
       const nombre_cliente = document.getElementById('ped-nombre').value;
       const telefono = document.getElementById('ped-telefono').value;
       const cedula = document.getElementById('ped-cedula').value;
@@ -1016,42 +1064,80 @@
       const direccion = document.getElementById('ped-direccion').value;
       const barrio = document.getElementById('ped-barrio').value;
       const ciudad = document.getElementById('ped-ciudad').value;
-      const fecha_entrega = document.getElementById('ped-fecha-entrega').value;
       const tipo_entrega = document.getElementById('ped-tipo').value;
       const descripcion = document.getElementById('ped-descripcion').value;
 
-      let estado = fecha_entrega === todayStr ? 'Es Hoy' : 'Agendado';
-      const fileInput = document.getElementById('ped-foto-file');
+      let fecha_entrega = todayStr;
+      let fecha_envio = null;
 
-      // Función para procesar y guardar imagen en base64
-      const processAndSave = async (foto_url = '') => {
+      if (tipo_entrega === 'Envío') {
+        fecha_envio = document.getElementById('ped-fecha-envio').value;
+        fecha_entrega = document.getElementById('ped-fecha-llegada').value;
+      } else {
+        fecha_entrega = document.getElementById('ped-fecha-entrega').value;
+      }
+
+      const valor_producto = parseFloat(document.getElementById('ped-val-prod').value) || 0;
+      const valor_domicilio = parseFloat(document.getElementById('ped-val-dom').value) || 0;
+      const total_pedido = valor_producto + valor_domicilio;
+
+      let estado = 'Agendado';
+      if (tipo_entrega === 'Envío' && fecha_envio === todayStr) estado = 'En Camino';
+      else if (fecha_entrega === todayStr) estado = 'Es Hoy';
+
+      const fileInput = document.getElementById('ped-fotos-files');
+
+      const processData = async (fotos_urls = []) => {
         const item = {
           nombre_cliente, telefono, cedula, correo,
-          direccion, barrio, ciudad, fecha_entrega, tipo_entrega,
-          estado, descripcion, foto_url
+          direccion, barrio, ciudad, tipo_entrega,
+          fecha_entrega, fecha_envio, valor_producto, valor_domicilio,
+          total_pedido, estado, descripcion, fotos_urls
         };
 
         if (supabaseClient) {
-          await supabaseClient.from('pedidos').insert([item]);
+          if (id) await supabaseClient.from('pedidos').update(item).eq('id', id);
+          else await supabaseClient.from('pedidos').insert([item]);
         } else {
-          item.id = Date.now().toString();
-          dbPedidos.push(item);
+          item.id = id || Date.now().toString();
+          if (id) {
+            const idx = dbPedidos.findIndex(x => x.id === id);
+            if (idx !== -1) dbPedidos[idx] = { ...dbPedidos[idx], ...item };
+          } else {
+            dbPedidos.push(item);
+          }
           saveDataLocal();
         }
 
         closeModal('modalPedido');
-        showToast('Pedido registrado con éxito');
+        showToast('Pedido guardado correctamente');
         loadData();
       };
 
-      if (fileInput.files && fileInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(uploadEvent) {
-          processAndSave(uploadEvent.target.result);
-        };
-        reader.readAsDataURL(fileInput.files[0]);
+      // Leer múltiples archivos a Base64
+      let existingFotos = [];
+      if (id) {
+        const currentP = dbPedidos.find(x => x.id === id);
+        if (currentP && currentP.fotos_urls) existingFotos = currentP.fotos_urls;
+      }
+
+      if (fileInput.files && fileInput.files.length > 0) {
+        let loadedCount = 0;
+        let newBase64s = [...existingFotos];
+
+        Array.from(fileInput.files).forEach(file => {
+          const reader = new FileReader();
+          reader.onload = function(uploadEvent) {
+            newBase64s.push(uploadEvent.target.result);
+            loadedCount++;
+            if (loadedCount === fileInput.files.length) {
+              processData(newBase64s);
+            }
+          };
+          reader.readAsDataURL(file);
+        });
       } else {
-        processAndSave('');
+        processData(existingFotos);
       }
     }
 
@@ -1060,42 +1146,43 @@
       if (!item) return;
       item.estado = newStatus;
 
-      if (supabaseClient) {
-        await supabaseClient.from('pedidos').update({ estado: newStatus }).eq('id', id);
-      } else {
-        saveDataLocal();
-      }
-      showToast(`Estado actualizado a ${newStatus}`);
+      if (supabaseClient) await supabaseClient.from('pedidos').update({ estado: newStatus }).eq('id', id);
+      else saveDataLocal();
+
+      showToast(`Estado cambiado a ${newStatus}`);
       renderPedidos();
     }
 
     async function deletePedido(id) {
-      if (!confirm('¿Eliminar este pedido?')) return;
-      if (supabaseClient) {
-        await supabaseClient.from('pedidos').delete().eq('id', id);
-      } else {
-        dbPedidos = dbPedidos.filter(p => p.id !== id);
-        saveDataLocal();
-      }
-      showToast('Pedido eliminado');
+      if (!confirm('¿Eliminar pedido?')) return;
+      if (supabaseClient) await supabaseClient.from('pedidos').delete().eq('id', id);
+      else { dbPedidos = dbPedidos.filter(p => p.id !== id); saveDataLocal(); }
       loadData();
     }
 
-    function viewProductDetails(fotoUrl, descripcion) {
-      const img = document.getElementById('ver-producto-img');
-      const noImg = document.getElementById('ver-producto-noimg');
+    function viewProductDetails(id) {
+      const p = dbPedidos.find(item => item.id === id);
+      if (!p) return;
+
+      const galeria = document.getElementById('ver-galeria-imgs');
+      const noImg = document.getElementById('ver-noimg');
       const desc = document.getElementById('ver-producto-desc');
 
-      if (fotoUrl && fotoUrl.trim() !== '') {
-        img.src = fotoUrl;
-        img.style.display = 'block';
+      galeria.innerHTML = '';
+      if (p.fotos_urls && p.fotos_urls.length > 0) {
         noImg.style.display = 'none';
+        p.fotos_urls.forEach(url => {
+          const img = document.createElement('img');
+          img.src = url;
+          img.style.cssText = 'height: 140px; width: 140px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-color); cursor: pointer;';
+          img.onclick = () => window.open(url);
+          galeria.appendChild(img);
+        });
       } else {
-        img.style.display = 'none';
         noImg.style.display = 'block';
       }
 
-      desc.innerText = descripcion && descripcion.trim() !== '' ? descripcion : 'Sin descripción registrada para este producto.';
+      desc.innerText = p.descripcion && p.descripcion.trim() !== '' ? p.descripcion : 'Sin descripción registrada.';
       document.getElementById('modalVerProducto').classList.add('active');
     }
 
@@ -1115,7 +1202,7 @@
         if (p.estado === 'En Camino') cntCamino++;
         if (p.estado === 'Entregado') cntEntregados++;
 
-        let rowClass = p.estado === 'Cancelado' ? 'row-cancelado' : (p.estado === 'Es Hoy' ? 'row-eshoy' : '');
+        let rowClass = p.estado === 'Cancelado' ? 'row-cancelado' : (p.estado === 'EsHoy' ? 'row-eshoy' : '');
         let badgeClass = p.estado === 'Es Hoy' ? 'badge-eshoy' : (p.estado === 'En Camino' ? 'badge-encamino' : (p.estado === 'Entregado' ? 'badge-entregado' : (p.estado === 'Cancelado' ? 'badge-cancelado' : 'badge-agendado')));
 
         const tr = document.createElement('tr');
@@ -1124,10 +1211,16 @@
           <td><strong>${p.nombre_cliente}</strong>${p.cedula ? `<br><small style="color:var(--text-muted)">C.C: ${p.cedula}</small>` : ''}</td>
           <td><i class="fa-solid fa-phone"></i> ${p.telefono}${p.correo ? `<br><small style="color:var(--text-muted)">${p.correo}</small>` : ''}</td>
           <td><strong>${p.direccion}</strong><br><small style="color:var(--text-muted)">${p.barrio}, ${p.ciudad}</small></td>
-          <td><strong>${formatDate(p.fecha_entrega)}</strong></td>
-          <td><span class="badge" style="background:var(--primary-light); color:var(--primary);">${p.tipo_entrega}</span></td>
           <td>
-            <button class="btn-action btn-view" title="Ver Producto y Descripción" onclick="viewProductDetails('${p.foto_url || ''}', '${(p.descripcion || '').replace(/'/g, "\\'")}')">
+            ${p.tipo_entrega === 'Envío' ? `<small>Envío: ${formatDate(p.fecha_envio)}</small><br>` : ''}
+            <strong>Entrega: ${formatDate(p.fecha_entrega)}</strong>
+          </td>
+          <td>
+            <span class="badge" style="background:var(--primary-light); color:var(--primary);">${p.tipo_entrega}</span><br>
+            <strong>$${formatMoney(p.total_pedido)}</strong>
+          </td>
+          <td>
+            <button class="btn-action btn-view" title="Ver Fotos y Descripción" onclick="viewProductDetails('${p.id}')">
               <i class="fa-solid fa-eye"></i>
             </button>
           </td>
@@ -1144,6 +1237,7 @@
           </td>
           <td>
             <div class="action-btns">
+              <button class="btn-action btn-edit" title="Editar Pedido" onclick="editPedido('${p.id}')"><i class="fa-solid fa-pen"></i></button>
               <button class="btn-action btn-delete" title="Eliminar" onclick="deletePedido('${p.id}')"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
@@ -1157,24 +1251,14 @@
       document.getElementById('stat-pedidos-entregados').innerText = cntEntregados;
     }
 
-    function closeModal(id) {
-      document.getElementById(id).classList.remove('active');
-    }
-
-    function toggleDarkMode() {
-      document.body.classList.toggle('dark-mode');
-    }
-
-    function formatMoney(num) {
-      return new Intl.NumberFormat('es-CO').format(num || 0);
-    }
-
+    function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
+    function formatMoney(num) { return new Intl.NumberFormat('es-CO').format(num || 0); }
     function formatDate(dateStr) {
       if (!dateStr) return '-';
       const parts = dateStr.split('-');
       return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
-
     function showToast(msg) {
       const toast = document.getElementById('toast');
       document.getElementById('toast-msg').innerText = msg;
