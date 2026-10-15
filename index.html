@@ -489,7 +489,7 @@
         <i class="fa-solid fa-cloud-arrow-up"></i> <span id="cloudText">Supabase Conectado</span>
       </div>
       <button class="icon-btn" onclick="toggleDarkMode()" title="Cambiar Tema">
-        <i class="fa-solid fa-moon"></i>
+        <i class="fa-solid fa-moon" id="theme-icon"></i>
       </button>
     </div>
   </header>
@@ -609,7 +609,7 @@
                 <th>Contacto</th>
                 <th>Dirección</th>
                 <th>Fechas</th>
-                <th>Tipo & Total</th>
+                <th>Costos & Pagos</th>
                 <th>Detalles</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -719,16 +719,12 @@
               </select>
             </div>
             <div class="form-group" id="group-fecha-entrega">
-              <label>Fecha de Entrega *</label>
+              <label>Fecha Estimada de Entrega *</label>
               <input type="date" id="ped-fecha-entrega">
             </div>
             <div class="form-group" id="group-fecha-envio" style="display:none;">
-              <label>Fecha de Envío (Salida) *</label>
+              <label>Fecha de Envío *</label>
               <input type="date" id="ped-fecha-envio">
-            </div>
-            <div class="form-group" id="group-fecha-llegada" style="display:none;">
-              <label>Fecha Estimada de Entrega *</label>
-              <input type="date" id="ped-fecha-llegada">
             </div>
             <div class="form-group">
               <label>Valor del Producto ($) *</label>
@@ -738,8 +734,13 @@
               <label>Valor del Domicilio/Envío ($) *</label>
               <input type="number" id="ped-val-dom" min="0" oninput="calcularTotalPedido()" required value="0">
             </div>
-            <div class="form-group full">
-              <label style="color:var(--primary); font-weight:800;">Total del Pedido: $<span id="ped-total-txt">0</span></label>
+            <div class="form-group">
+              <label>Anticipo / Abono ($)</label>
+              <input type="number" id="ped-anticipo" min="0" oninput="calcularTotalPedido()" required value="0">
+            </div>
+            <div class="form-group">
+              <label style="color:var(--primary); font-weight:800; font-size:0.95rem;">Total: $<span id="ped-total-txt">0</span></label>
+              <label style="color:#dc2626; font-weight:800; font-size:0.95rem; margin-top:4px;">Saldo Restante: $<span id="ped-saldo-txt">0</span></label>
             </div>
             <div class="form-group full">
               <label>Fotos del Producto (Puedes seleccionar varias imágenes)</label>
@@ -768,9 +769,7 @@
       </div>
       <div class="modal-body">
         <label style="font-weight:700; margin-bottom:8px; display:block;">Imágenes del Producto:</label>
-        <div id="ver-galeria-imgs" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 1rem;">
-          <!-- Galería dinámica -->
-        </div>
+        <div id="ver-galeria-imgs" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 1rem;"></div>
         <p id="ver-noimg" style="color: var(--text-muted); text-align: center; padding: 1rem; background: var(--bg-main); border-radius: 8px; display:none;">Sin imágenes adjuntas</p>
         
         <label style="font-weight: 700; display:block; margin-top:10px;">Descripción:</label>
@@ -798,10 +797,15 @@
     const todayStr = new Date().toISOString().split('T')[0];
 
     window.addEventListener('DOMContentLoaded', () => {
+      // Cargar Tema Guardado
+      if (localStorage.getItem('cupissa_theme') === 'dark') {
+        document.body.classList.add('dark-mode');
+        document.getElementById('theme-icon').className = 'fa-solid fa-sun';
+      }
+
       document.getElementById('cred-fecha-entrega').value = todayStr;
       document.getElementById('ped-fecha-entrega').value = todayStr;
       document.getElementById('ped-fecha-envio').value = todayStr;
-      document.getElementById('ped-fecha-llegada').value = todayStr;
 
       try {
         supabaseClient = supabase.createClient(SB_URL, SB_KEY);
@@ -810,6 +814,13 @@
       }
       loadData();
     });
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('cupissa_theme', isDark ? 'dark' : 'light');
+      document.getElementById('theme-icon').className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+    }
 
     function switchTab(tab) {
       document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -980,18 +991,21 @@
       if (tipo === 'Envío') {
         document.getElementById('group-fecha-entrega').style.display = 'none';
         document.getElementById('group-fecha-envio').style.display = 'flex';
-        document.getElementById('group-fecha-llegada').style.display = 'flex';
       } else {
         document.getElementById('group-fecha-entrega').style.display = 'flex';
         document.getElementById('group-fecha-envio').style.display = 'none';
-        document.getElementById('group-fecha-llegada').style.display = 'none';
       }
     }
 
     function calcularTotalPedido() {
       const p = parseFloat(document.getElementById('ped-val-prod').value) || 0;
       const d = parseFloat(document.getElementById('ped-val-dom').value) || 0;
-      document.getElementById('ped-total-txt').innerText = formatMoney(p + d);
+      const a = parseFloat(document.getElementById('ped-anticipo').value) || 0;
+      const total = p + d;
+      const saldo = Math.max(0, total - a);
+
+      document.getElementById('ped-total-txt').innerText = formatMoney(total);
+      document.getElementById('ped-saldo-txt').innerText = formatMoney(saldo);
     }
 
     function updatePedidosAutoStatus() {
@@ -999,7 +1013,6 @@
         if (p.estado !== 'Entregado' && p.estado !== 'Cancelado' && p.estado !== 'En Camino') {
           if (p.tipo_entrega === 'Envío') {
             if (p.fecha_envio === todayStr) p.estado = 'En Camino';
-            else if (p.fecha_llegada === todayStr) p.estado = 'Es Hoy';
             else if (p.fecha_envio > todayStr) p.estado = 'Agendado';
           } else {
             if (p.fecha_entrega === todayStr) p.estado = 'Es Hoy';
@@ -1014,9 +1027,9 @@
       document.getElementById('pedido-id').value = '';
       document.getElementById('ped-fecha-entrega').value = todayStr;
       document.getElementById('ped-fecha-envio').value = todayStr;
-      document.getElementById('ped-fecha-llegada').value = todayStr;
       document.getElementById('ped-val-prod').value = 0;
       document.getElementById('ped-val-dom').value = 0;
+      document.getElementById('ped-anticipo').value = 0;
       calcularTotalPedido();
       toggleTipoFechas();
       document.getElementById('modalPedidoTitle').innerText = 'Registrar Pedido';
@@ -1040,13 +1053,13 @@
 
       if (p.tipo_entrega === 'Envío') {
         document.getElementById('ped-fecha-envio').value = p.fecha_envio || todayStr;
-        document.getElementById('ped-fecha-llegada').value = p.fecha_entrega || todayStr;
       } else {
         document.getElementById('ped-fecha-entrega').value = p.fecha_entrega || todayStr;
       }
 
       document.getElementById('ped-val-prod').value = p.valor_producto || 0;
       document.getElementById('ped-val-dom').value = p.valor_domicilio || 0;
+      document.getElementById('ped-anticipo').value = p.anticipo || 0;
       document.getElementById('ped-descripcion').value = p.descripcion || '';
       calcularTotalPedido();
 
@@ -1067,23 +1080,18 @@
       const tipo_entrega = document.getElementById('ped-tipo').value;
       const descripcion = document.getElementById('ped-descripcion').value;
 
-      let fecha_entrega = todayStr;
-      let fecha_envio = null;
-
-      if (tipo_entrega === 'Envío') {
-        fecha_envio = document.getElementById('ped-fecha-envio').value;
-        fecha_entrega = document.getElementById('ped-fecha-llegada').value;
-      } else {
-        fecha_entrega = document.getElementById('ped-fecha-entrega').value;
-      }
+      let fecha_entrega = tipo_entrega === 'Domicilio' ? document.getElementById('ped-fecha-entrega').value : null;
+      let fecha_envio = tipo_entrega === 'Envío' ? document.getElementById('ped-fecha-envio').value : null;
 
       const valor_producto = parseFloat(document.getElementById('ped-val-prod').value) || 0;
       const valor_domicilio = parseFloat(document.getElementById('ped-val-dom').value) || 0;
+      const anticipo = parseFloat(document.getElementById('ped-anticipo').value) || 0;
       const total_pedido = valor_producto + valor_domicilio;
+      const saldo_restante = Math.max(0, total_pedido - anticipo);
 
       let estado = 'Agendado';
       if (tipo_entrega === 'Envío' && fecha_envio === todayStr) estado = 'En Camino';
-      else if (fecha_entrega === todayStr) estado = 'Es Hoy';
+      else if (tipo_entrega === 'Domicilio' && fecha_entrega === todayStr) estado = 'Es Hoy';
 
       const fileInput = document.getElementById('ped-fotos-files');
 
@@ -1092,7 +1100,7 @@
           nombre_cliente, telefono, cedula, correo,
           direccion, barrio, ciudad, tipo_entrega,
           fecha_entrega, fecha_envio, valor_producto, valor_domicilio,
-          total_pedido, estado, descripcion, fotos_urls
+          anticipo, total_pedido, saldo_restante, estado, descripcion, fotos_urls
         };
 
         if (supabaseClient) {
@@ -1114,7 +1122,6 @@
         loadData();
       };
 
-      // Leer múltiples archivos a Base64
       let existingFotos = [];
       if (id) {
         const currentP = dbPedidos.find(x => x.id === id);
@@ -1146,7 +1153,13 @@
       if (!item) return;
       item.estado = newStatus;
 
-      if (supabaseClient) await supabaseClient.from('pedidos').update({ estado: newStatus }).eq('id', id);
+      let updateData = { estado: newStatus };
+      if (newStatus === 'Entregado') {
+        item.fecha_entrega_real = todayStr;
+        updateData.fecha_entrega_real = todayStr;
+      }
+
+      if (supabaseClient) await supabaseClient.from('pedidos').update(updateData).eq('id', id);
       else saveDataLocal();
 
       showToast(`Estado cambiado a ${newStatus}`);
@@ -1202,7 +1215,7 @@
         if (p.estado === 'En Camino') cntCamino++;
         if (p.estado === 'Entregado') cntEntregados++;
 
-        let rowClass = p.estado === 'Cancelado' ? 'row-cancelado' : (p.estado === 'EsHoy' ? 'row-eshoy' : '');
+        let rowClass = p.estado === 'Cancelado' ? 'row-cancelado' : (p.estado === 'Es Hoy' ? 'row-eshoy' : '');
         let badgeClass = p.estado === 'Es Hoy' ? 'badge-eshoy' : (p.estado === 'En Camino' ? 'badge-encamino' : (p.estado === 'Entregado' ? 'badge-entregado' : (p.estado === 'Cancelado' ? 'badge-cancelado' : 'badge-agendado')));
 
         const tr = document.createElement('tr');
@@ -1212,12 +1225,14 @@
           <td><i class="fa-solid fa-phone"></i> ${p.telefono}${p.correo ? `<br><small style="color:var(--text-muted)">${p.correo}</small>` : ''}</td>
           <td><strong>${p.direccion}</strong><br><small style="color:var(--text-muted)">${p.barrio}, ${p.ciudad}</small></td>
           <td>
-            ${p.tipo_entrega === 'Envío' ? `<small>Envío: ${formatDate(p.fecha_envio)}</small><br>` : ''}
-            <strong>Entrega: ${formatDate(p.fecha_entrega)}</strong>
+            ${p.tipo_entrega === 'Envío' ? `<small>F. Envío: ${formatDate(p.fecha_envio)}</small><br>` : ''}
+            ${p.fecha_entrega_real ? `<strong style="color:#16a34a">F. Recibido: ${formatDate(p.fecha_entrega_real)}</strong>` : `Entrega: ${formatDate(p.fecha_entrega)}`}
           </td>
           <td>
             <span class="badge" style="background:var(--primary-light); color:var(--primary);">${p.tipo_entrega}</span><br>
-            <strong>$${formatMoney(p.total_pedido)}</strong>
+            <strong>Total: $${formatMoney(p.total_pedido)}</strong><br>
+            <small style="color:var(--text-muted)">Anticipo: $${formatMoney(p.anticipo)}</small><br>
+            <strong style="color:${p.saldo_restante > 0 ? '#dc2626' : '#16a34a'}">Saldo: $${formatMoney(p.saldo_restante)}</strong>
           </td>
           <td>
             <button class="btn-action btn-view" title="Ver Fotos y Descripción" onclick="viewProductDetails('${p.id}')">
@@ -1252,7 +1267,6 @@
     }
 
     function closeModal(id) { document.getElementById(id).classList.remove('active'); }
-    function toggleDarkMode() { document.body.classList.toggle('dark-mode'); }
     function formatMoney(num) { return new Intl.NumberFormat('es-CO').format(num || 0); }
     function formatDate(dateStr) {
       if (!dateStr) return '-';
