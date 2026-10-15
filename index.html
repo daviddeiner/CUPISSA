@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CUPISSA - Gestión de Créditos y Pedidos</title>
+  
+  <!-- FontAwesome e Inter Font -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-light: #e0e7ff;
+      --secondary: #a855f7;
+      --secondary-hover: #9333ea;
+      --accent: #ec4899;
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.08);
+      --radius: 16px;
+      
+      /* Status Colors */
+      --status-agendado-bg: #e0f2fe;
+      --status-agendado-txt: #0369a1;
+      --status-eshoy-bg: #fef08a;
+      --status-eshoy-txt: #854d0e;
+      --status-encamino-bg: #fed7aa;
+      --status-encamino-txt: #c2410c;
+      --status-entregado-bg: #dcfce7;
+      --status-entregado-txt: #15803d;
+      --status-cancelado-bg: #f1f5f9;
+      --status-cancelado-txt: #64748b;
+    }
+
+    .dark-mode {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border-color: #334155;
+      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3);
+      --primary-light: rgba(99, 102, 241, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    }
+
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .brand-text h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .nav-tabs {
+      display: flex;
+      background: var(--bg-main);
+      padding: 4px;
+      border-radius: 12px;
+      gap: 4px;
+      border: 1px solid var(--border-color);
+    }
+
+    .nav-btn {
+      padding: 8px 16px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.875rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-btn.active {
+      background: var(--bg-card);
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+
+    .icon-btn:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .status-badge-cloud {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cloud-online { background: #dcfce7; color: #15803d; }
+    .cloud-local { background: #fef3c7; color: #b45309; }
+
+    main {
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      flex: 1;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.95;
+      transform: translateY(-1px);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .stat-data h3 {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-data p {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    th {
+      background: var(--bg-main);
+      color: var(--text-muted);
+      padding: 12px 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(99, 102, 241, 0.02);
+    }
+
+    .badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+    }
+
+    .badge-agendado { background: var(--status-agendado-bg); color: var(--status-agendado-txt); }
+    .badge-eshoy { 
+      background: var(--status-eshoy-bg); 
+      color: var(--status-eshoy-txt); 
+      animation: pulse-border 1.5s infinite;
+      box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+    }
+    .badge-encamino { background: var(--status-encamino-bg); color: var(--status-encamino-txt); }
+    .badge-entregado { background: var(--status-entregado-bg); color: var(--status-entregado-txt); }
+    .badge-cancelado { background: var(--status-cancelado-bg); color: var(--status-cancelado-txt); }
+
+    @keyframes pulse-border {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    .row-cancelado { opacity: 0.6; background: rgba(0, 0, 0, 0.02); }
+    .row-eshoy { background: rgba(254, 240, 138, 0.15) !important; border-left: 4px solid #eab308; }
+
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active { display: flex; }
+
+    .modal {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 650px;
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow);
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 { font-size: 1.15rem; font-weight: 700; }
+    .modal-body { padding: 1.5rem; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: span 2; }
+
+    label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
+
+    input, select, textarea {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+
+    .modal-footer {
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .btn-secondary {
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .action-btns { display: flex; gap: 6px; }
+
+    .btn-action {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-main);
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+    }
+
+    .btn-action:hover { background: var(--primary-light); color: var(--primary); }
+    .btn-pay { color: #16a34a; }
+    .btn-pay:hover { background: #dcfce7; }
+    .btn-delete { color: #dc2626; }
+    .btn-delete:hover { background: #fee2e2; }
+    .btn-view { color: var(--secondary); }
+    .btn-view:hover { background: rgba(168, 85, 247, 0.1); }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      padding: 12px 20px;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 2000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    @media (max-width: 768px) {
+      header { padding: 1rem; flex-direction: column; gap: 1rem; align-items: stretch; }
+      .header-actions { justify-content: space-between; }
+      .form-grid { grid-template-columns: 1fr; }
+      .form-group.full { grid-column: span 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">C</div>
+      <div class="brand-text">
+        <h1>CUPISSA</h1>
+        <p>Sistema de Gestión & Pedidos</p>
+      </div>
+    </div>
+
+    <div class="nav-tabs">
+      <button class="nav-btn active" onclick="switchTab('creditos')">
+        <i class="fa-solid fa-hand-holding-dollar"></i> Créditos
+      </button>
+      <button class="nav-btn" onclick="switchTab('pedidos')">
+        <i class="fa-solid fa-box-open"></i> Pedidos
+      </button>
+    </div>
+
+    <div class="header-actions">
+      <div id="cloudBadge" class="status-badge-cloud cloud-online">
+        <i class="fa-solid fa-cloud-arrow-up"></i> <span id="cloudText">Supabase Conectado</span>
+      </div>
+      <button class="icon-btn" onclick="toggleDarkMode()" title="Cambiar Tema">
+        <i class="fa-solid fa-moon"></i>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- VISTA 1: CRÉDITOS -->
+    <section id="tab-creditos" class="tab-content active">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="fa-solid fa-wallet"></i></div>
+          <div class="stat-data">
+            <h3>Cartera Total</h3>
+            <p id="stat-credito-total">$0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          <div class="stat-data">
+            <h3>Deuda Pendiente</h3>
+            <p id="stat-credito-deuda">$0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+          <div class="stat-data">
+            <h3>Total Recaudado</h3>
+            <p id="stat-credito-pagado">$0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+          <div class="stat-data">
+            <h3>Créditos Activos</h3>
+            <p id="stat-credito-activos">0</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fa-solid fa-list-check" style="color:var(--primary)"></i> Listado de Créditos
+          </div>
+          <button class="btn-primary" onclick="openCreditoModal()">
+            <i class="fa-solid fa-plus"></i> Nuevo Crédito
+          </button>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Frecuencia</th>
+                <th>Cuotas Pend.</th>
+                <th>Valor Cuota</th>
+                <th>Próx. Vencimiento</th>
+                <th>Deuda Actual</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-creditos">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- VISTA 2: PEDIDOS -->
+    <section id="tab-pedidos" class="tab-content">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><i class="fa-solid fa-boxes-packing"></i></div>
+          <div class="stat-data">
+            <h3>Total Pedidos</h3>
+            <p id="stat-pedidos-total">0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#fef08a; color:#854d0e;"><i class="fa-solid fa-bell"></i></div>
+          <div class="stat-data">
+            <h3>Para Entregar Hoy</h3>
+            <p id="stat-pedidos-hoy">0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#fed7aa; color:#c2410c;"><i class="fa-solid fa-truck-fast"></i></div>
+          <div class="stat-data">
+            <h3>En Camino</h3>
+            <p id="stat-pedidos-camino">0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#dcfce7; color:#15803d;"><i class="fa-solid fa-circle-check"></i></div>
+          <div class="stat-data">
+            <h3>Entregados</h3>
+            <p id="stat-pedidos-entregados">0</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">
+            <i class="fa-solid fa-truck-ramp-box" style="color:var(--secondary)"></i> Listado de Pedidos
+          </div>
+          <button class="btn-primary" onclick="openPedidoModal()">
+            <i class="fa-solid fa-plus"></i> Registrar Pedido
+          </button>
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Contacto</th>
+                <th>Dirección / Ubicación</th>
+                <th>Fecha Entrega</th>
+                <th>Tipo</th>
+                <th>Producto (Ver)</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-pedidos">
+              <!-- Filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: NUEVO CRÉDITO -->
+  <div class="modal-overlay" id="modalCredito">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalCreditoTitle">Nuevo Crédito</h2>
+        <button class="btn-action" onclick="closeModal('modalCredito')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="formCredito" onsubmit="saveCredito(event)">
+        <input type="hidden" id="credito-id">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Cliente *</label>
+              <input type="text" id="cred-cliente" required placeholder="Nombre completo">
+            </div>
+            <div class="form-group">
+              <label>Teléfono *</label>
+              <input type="tel" id="cred-telefono" required placeholder="Ej: 3001234567">
+            </div>
+            <div class="form-group">
+              <label>Frecuencia *</label>
+              <select id="cred-frecuencia" required>
+                <option value="Diario">Diario</option>
+                <option value="Semanal" selected>Semanal</option>
+                <option value="Quincenal">Quincenal</option>
+                <option value="Mensual">Mensual</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Fecha de Entrega/Inicio *</label>
+              <input type="date" id="cred-fecha-entrega" required>
+            </div>
+            <div class="form-group">
+              <label>Número de Cuotas *</label>
+              <input type="number" id="cred-num-cuotas" min="1" required placeholder="Ej: 4">
+            </div>
+            <div class="form-group">
+              <label>Valor por Cuota ($) *</label>
+              <input type="number" id="cred-valor-cuota" min="1" required placeholder="Ej: 20000">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalCredito')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Crédito</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: NUEVO PEDIDO -->
+  <div class="modal-overlay" id="modalPedido">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalPedidoTitle">Nuevo Pedido</h2>
+        <button class="btn-action" onclick="closeModal('modalPedido')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="formPedido" onsubmit="savePedido(event)">
+        <input type="hidden" id="pedido-id">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Nombres y Apellidos *</label>
+              <input type="text" id="ped-nombre" required placeholder="Ej: María Pérez">
+            </div>
+            <div class="form-group">
+              <label>Teléfono *</label>
+              <input type="tel" id="ped-telefono" required placeholder="Ej: 3109876543">
+            </div>
+            <div class="form-group">
+              <label>Cédula (Opcional)</label>
+              <input type="text" id="ped-cedula" placeholder="Número de documento">
+            </div>
+            <div class="form-group">
+              <label>Correo Electrónico (Opcional)</label>
+              <input type="email" id="ped-correo" placeholder="correo@ejemplo.com">
+            </div>
+            <div class="form-group full">
+              <label>Dirección Exacta *</label>
+              <input type="text" id="ped-direccion" required placeholder="Calle, Carrera, N° de Casa/Apto">
+            </div>
+            <div class="form-group">
+              <label>Barrio *</label>
+              <input type="text" id="ped-barrio" required placeholder="Ej: El Prado">
+            </div>
+            <div class="form-group">
+              <label>Ciudad *</label>
+              <input type="text" id="ped-ciudad" required placeholder="Ej: Barranquilla">
+            </div>
+            <div class="form-group">
+              <label>Fecha de Entrega *</label>
+              <input type="date" id="ped-fecha-entrega" required>
+            </div>
+            <div class="form-group">
+              <label>Tipo de Entrega *</label>
+              <select id="ped-tipo" required>
+                <option value="Envío">Envío Nacional/Empresa</option>
+                <option value="Domicilio" selected>Domicilio Local</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>Foto del Producto (Imagen)</label>
+              <input type="file" id="ped-foto-file" accept="image/*">
+            </div>
+            <div class="form-group full">
+              <label>Descripción del Producto</label>
+              <textarea id="ped-descripcion" rows="3" placeholder="Detalles, diseño personalizado, colores, etc."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="closeModal('modalPedido')">Cancelar</button>
+          <button type="submit" class="btn-primary">Guardar Pedido</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VER PRODUCTO Y DESCRIPCIÓN -->
+  <div class="modal-overlay" id="modalVerProducto">
+    <div class="modal" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2>Detalles del Producto</h2>
+        <button class="btn-action" onclick="closeModal('modalVerProducto')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body" style="text-align: center;">
+        <div id="ver-producto-img-container" style="margin-bottom: 1rem; max-height: 250px; overflow: hidden; border-radius: 10px;">
+          <img id="ver-producto-img" src="" alt="Sin foto" style="width: 100%; object-fit: contain; display: none;">
+          <p id="ver-producto-noimg" style="color: var(--text-muted); padding: 2rem; background: var(--bg-main); border-radius: 10px;">Sin imagen adjunta</p>
+        </div>
+        <div style="text-align: left;">
+          <label style="font-weight: 700;">Descripción:</label>
+          <p id="ver-producto-desc" style="margin-top: 4px; padding: 10px; background: var(--bg-main); border-radius: 8px; font-size: 0.9rem; min-height: 60px;"></p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-primary" onclick="closeModal('modalVerProducto')">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICACIÓN TOAST -->
+  <div class="toast" id="toast">
+    <i class="fa-solid fa-circle-check" style="color:#16a34a"></i>
+    <span id="toast-msg">Mensaje de notificación</span>
+  </div>
+
+  <script>
+    // CREDENCIALES DE SUPABASE CONFIGURADAS
+    const SB_URL = 'https://lkdxtesgwqoizobxaawp.supabase.co';
+    const SB_KEY = 'sb_publishable_Fw-f7SC-4FgTjO3y5XbqRA_Pp0m6oCQ';
+
+    let supabaseClient = null;
+    let dbCreditos = [];
+    let dbPedidos = [];
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('cred-fecha-entrega').value = todayStr;
+      document.getElementById('ped-fecha-entrega').value = todayStr;
+
+      try {
+        supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+      } catch (e) {
+        console.error("Error inicializando Supabase:", e);
+      }
+
+      loadData();
+    });
+
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      if (tab === 'creditos') {
+        document.querySelectorAll('.nav-btn')[0].classList.add('active');
+        document.getElementById('tab-creditos').classList.add('active');
+      } else {
+        document.querySelectorAll('.nav-btn')[1].classList.add('active');
+        document.getElementById('tab-pedidos').classList.add('active');
+      }
+    }
+
+    async function loadData() {
+      if (supabaseClient) {
+        try {
+          const { data: creds } = await supabaseClient.from('creditos').select('*').order('created_at', { ascending: false });
+          if (creds) dbCreditos = creds;
+
+          const { data: peds } = await supabaseClient.from('pedidos').select('*');
+          if (peds) dbPedidos = peds;
+        } catch (err) {
+          console.warn('Error cargando desde Supabase, cargando LocalStorage:', err);
+          loadLocal();
+        }
+      } else {
+        loadLocal();
+      }
+
+      updatePedidosAutoStatus();
+      renderCreditos();
+      renderPedidos();
+    }
+
+    function loadLocal() {
+      dbCreditos = JSON.parse(localStorage.getItem('cupissa_creditos')) || [];
+      dbPedidos = JSON.parse(localStorage.getItem('cupissa_pedidos')) || [];
+    }
+
+    function saveDataLocal() {
+      localStorage.setItem('cupissa_creditos', JSON.stringify(dbCreditos));
+      localStorage.setItem('cupissa_pedidos', JSON.stringify(dbPedidos));
+    }
+
+    function calculateNextDueDate(startDateStr, frequency, currentCuotaNumber = 1) {
+      const parts = startDateStr.split('-');
+      let date = new Date(parts[0], parts[1] - 1, parts[2]);
+
+      for (let i = 0; i < currentCuotaNumber; i++) {
+        if (frequency === 'Diario') {
+          date.setDate(date.getDate() + 1);
+        } else if (frequency === 'Semanal') {
+          date.setDate(date.getDate() + 7);
+        } else if (frequency === 'Quincenal') {
+          date.setDate(date.getDate() + 15);
+        } else if (frequency === 'Mensual') {
+          date.setMonth(date.getMonth() + 1);
+        }
+      }
+      return date.toISOString().split('T')[0];
+    }
+
+    // --- CRÉDITOS ---
+    function openCreditoModal() {
+      document.getElementById('formCredito').reset();
+      document.getElementById('credito-id').value = '';
+      document.getElementById('cred-fecha-entrega').value = todayStr;
+      document.getElementById('modalCreditoTitle').innerText = 'Nuevo Crédito';
+      document.getElementById('modalCredito').classList.add('active');
+    }
+
+    async function saveCredito(e) {
+      e.preventDefault();
+      const id = document.getElementById('credito-id').value;
+      const cliente = document.getElementById('cred-cliente').value;
+      const telefono = document.getElementById('cred-telefono').value;
+      const frecuencia = document.getElementById('cred-frecuencia').value;
+      const fecha_entrega = document.getElementById('cred-fecha-entrega').value;
+      const num_cuotas = parseInt(document.getElementById('cred-num-cuotas').value);
+      const valor_cuota = parseFloat(document.getElementById('cred-valor-cuota').value);
+
+      const total_credito = num_cuotas * valor_cuota;
+      const item = {
+        cliente, telefono, frecuencia, fecha_entrega, num_cuotas,
+        cuotas_pendientes: num_cuotas, valor_cuota, total_credito, pagado: 0,
+        deuda_actual: total_credito, proximo_vencimiento: calculateNextDueDate(fecha_entrega, frecuencia, 1), estado: 'Activo'
+      };
+
+      if (supabaseClient) {
+        await supabaseClient.from('creditos').insert([item]);
+      } else {
+        item.id = Date.now().toString();
+        dbCreditos.unshift(item);
+        saveDataLocal();
+      }
+
+      closeModal('modalCredito');
+      showToast('Crédito guardado exitosamente');
+      loadData();
+    }
+
+    async function registerPayment(id) {
+      const item = dbCreditos.find(c => c.id === id);
+      if (!item || item.cuotas_pendientes <= 0) return;
+
+      item.cuotas_pendientes -= 1;
+      item.pagado += item.valor_cuota;
+      item.deuda_actual -= item.valor_cuota;
+
+      if (item.cuotas_pendientes === 0 || item.deuda_actual <= 0) {
+        item.deuda_actual = 0;
+        item.estado = 'Finalizado';
+      } else {
+        const cuotasPagadas = item.num_cuotas - item.cuotas_pendientes;
+        item.proximo_vencimiento = calculateNextDueDate(item.fecha_entrega, item.frecuencia, cuotasPagadas + 1);
+      }
+
+      if (supabaseClient) {
+        await supabaseClient.from('creditos').update(item).eq('id', id);
+      } else {
+        saveDataLocal();
+      }
+
+      showToast(`Pago registrado para ${item.cliente}`);
+      renderCreditos();
+    }
+
+    async function deleteCredito(id) {
+      if (!confirm('¿Estás seguro de eliminar este crédito?')) return;
+      if (supabaseClient) {
+        await supabaseClient.from('creditos').delete().eq('id', id);
+      } else {
+        dbCreditos = dbCreditos.filter(c => c.id !== id);
+        saveDataLocal();
+      }
+      showToast('Crédito eliminado');
+      loadData();
+    }
+
+    function renderCreditos() {
+      const tbody = document.getElementById('tabla-creditos');
+      tbody.innerHTML = '';
+      let totalCar = 0, totalDeuda = 0, totalPagado = 0, activosCount = 0;
+
+      dbCreditos.forEach(c => {
+        totalCar += c.total_credito;
+        totalDeuda += c.deuda_actual;
+        totalPagado += c.pagado;
+        if (c.estado === 'Activo') activosCount++;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${c.cliente}</strong><br><small style="color:var(--text-muted)"><i class="fa-solid fa-phone"></i> ${c.telefono}</small></td>
+          <td><span class="badge" style="background:var(--primary-light); color:var(--primary);">${c.frecuencia}</span></td>
+          <td><strong>${c.cuotas_pendientes}</strong> / ${c.num_cuotas}</td>
+          <td>$${formatMoney(c.valor_cuota)}</td>
+          <td style="color:${c.estado === 'Activo' ? 'var(--primary)' : 'inherit'}; font-weight:700;">${c.estado === 'Activo' ? formatDate(c.proximo_vencimiento) : '-'}</td>
+          <td style="font-weight:800; color:${c.deuda_actual > 0 ? '#dc2626' : '#16a34a'}">$${formatMoney(c.deuda_actual)}</td>
+          <td><span class="badge ${c.estado === 'Activo' ? 'badge-agendado' : 'badge-entregado'}">${c.estado}</span></td>
+          <td>
+            <div class="action-btns">
+              ${c.estado === 'Activo' ? `<button class="btn-action btn-pay" title="Registrar Pago" onclick="registerPayment('${c.id}')"><i class="fa-solid fa-hand-holding-dollar"></i></button>` : ''}
+              <button class="btn-action btn-delete" title="Eliminar" onclick="deleteCredito('${c.id}')"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('stat-credito-total').innerText = '$' + formatMoney(totalCar);
+      document.getElementById('stat-credito-deuda').innerText = '$' + formatMoney(totalDeuda);
+      document.getElementById('stat-credito-pagado').innerText = '$' + formatMoney(totalPagado);
+      document.getElementById('stat-credito-activos').innerText = activosCount;
+    }
+
+    // --- PEDIDOS ---
+    function updatePedidosAutoStatus() {
+      dbPedidos.forEach(p => {
+        if (p.estado !== 'Entregado' && p.estado !== 'Cancelado' && p.estado !== 'En Camino') {
+          if (p.fecha_entrega === todayStr) {
+            p.estado = 'Es Hoy';
+          } else if (p.fecha_entrega > todayStr) {
+            p.estado = 'Agendado';
+          }
+        }
+      });
+    }
+
+    function openPedidoModal() {
+      document.getElementById('formPedido').reset();
+      document.getElementById('pedido-id').value = '';
+      document.getElementById('ped-fecha-entrega').value = todayStr;
+      document.getElementById('modalPedidoTitle').innerText = 'Nuevo Pedido';
+      document.getElementById('modalPedido').classList.add('active');
+    }
+
+    async function savePedido(e) {
+      e.preventDefault();
+      const nombre_cliente = document.getElementById('ped-nombre').value;
+      const telefono = document.getElementById('ped-telefono').value;
+      const cedula = document.getElementById('ped-cedula').value;
+      const correo = document.getElementById('ped-correo').value;
+      const direccion = document.getElementById('ped-direccion').value;
+      const barrio = document.getElementById('ped-barrio').value;
+      const ciudad = document.getElementById('ped-ciudad').value;
+      const fecha_entrega = document.getElementById('ped-fecha-entrega').value;
+      const tipo_entrega = document.getElementById('ped-tipo').value;
+      const descripcion = document.getElementById('ped-descripcion').value;
+
+      let estado = fecha_entrega === todayStr ? 'Es Hoy' : 'Agendado';
+      const fileInput = document.getElementById('ped-foto-file');
+
+      // Función para procesar y guardar imagen en base64
+      const processAndSave = async (foto_url = '') => {
+        const item = {
+          nombre_cliente, telefono, cedula, correo,
+          direccion, barrio, ciudad, fecha_entrega, tipo_entrega,
+          estado, descripcion, foto_url
+        };
+
+        if (supabaseClient) {
+          await supabaseClient.from('pedidos').insert([item]);
+        } else {
+          item.id = Date.now().toString();
+          dbPedidos.push(item);
+          saveDataLocal();
+        }
+
+        closeModal('modalPedido');
+        showToast('Pedido registrado con éxito');
+        loadData();
+      };
+
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(uploadEvent) {
+          processAndSave(uploadEvent.target.result);
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        processAndSave('');
+      }
+    }
+
+    async function changePedidoStatus(id, newStatus) {
+      const item = dbPedidos.find(p => p.id === id);
+      if (!item) return;
+      item.estado = newStatus;
+
+      if (supabaseClient) {
+        await supabaseClient.from('pedidos').update({ estado: newStatus }).eq('id', id);
+      } else {
+        saveDataLocal();
+      }
+      showToast(`Estado actualizado a ${newStatus}`);
+      renderPedidos();
+    }
+
+    async function deletePedido(id) {
+      if (!confirm('¿Eliminar este pedido?')) return;
+      if (supabaseClient) {
+        await supabaseClient.from('pedidos').delete().eq('id', id);
+      } else {
+        dbPedidos = dbPedidos.filter(p => p.id !== id);
+        saveDataLocal();
+      }
+      showToast('Pedido eliminado');
+      loadData();
+    }
+
+    function viewProductDetails(fotoUrl, descripcion) {
+      const img = document.getElementById('ver-producto-img');
+      const noImg = document.getElementById('ver-producto-noimg');
+      const desc = document.getElementById('ver-producto-desc');
+
+      if (fotoUrl && fotoUrl.trim() !== '') {
+        img.src = fotoUrl;
+        img.style.display = 'block';
+        noImg.style.display = 'none';
+      } else {
+        img.style.display = 'none';
+        noImg.style.display = 'block';
+      }
+
+      desc.innerText = descripcion && descripcion.trim() !== '' ? descripcion : 'Sin descripción registrada para este producto.';
+      document.getElementById('modalVerProducto').classList.add('active');
+    }
+
+    function renderPedidos() {
+      const tbody = document.getElementById('tabla-pedidos');
+      tbody.innerHTML = '';
+
+      const sorted = [...dbPedidos].sort((a, b) => {
+        const order = { 'Es Hoy': 1, 'Agendado': 2, 'En Camino': 3, 'Entregado': 4, 'Cancelado': 5 };
+        return order[a.estado] - order[b.estado];
+      });
+
+      let cntTotal = dbPedidos.length, cntHoy = 0, cntCamino = 0, cntEntregados = 0;
+
+      sorted.forEach(p => {
+        if (p.estado === 'Es Hoy') cntHoy++;
+        if (p.estado === 'En Camino') cntCamino++;
+        if (p.estado === 'Entregado') cntEntregados++;
+
+        let rowClass = p.estado === 'Cancelado' ? 'row-cancelado' : (p.estado === 'Es Hoy' ? 'row-eshoy' : '');
+        let badgeClass = p.estado === 'Es Hoy' ? 'badge-eshoy' : (p.estado === 'En Camino' ? 'badge-encamino' : (p.estado === 'Entregado' ? 'badge-entregado' : (p.estado === 'Cancelado' ? 'badge-cancelado' : 'badge-agendado')));
+
+        const tr = document.createElement('tr');
+        tr.className = rowClass;
+        tr.innerHTML = `
+          <td><strong>${p.nombre_cliente}</strong>${p.cedula ? `<br><small style="color:var(--text-muted)">C.C: ${p.cedula}</small>` : ''}</td>
+          <td><i class="fa-solid fa-phone"></i> ${p.telefono}${p.correo ? `<br><small style="color:var(--text-muted)">${p.correo}</small>` : ''}</td>
+          <td><strong>${p.direccion}</strong><br><small style="color:var(--text-muted)">${p.barrio}, ${p.ciudad}</small></td>
+          <td><strong>${formatDate(p.fecha_entrega)}</strong></td>
+          <td><span class="badge" style="background:var(--primary-light); color:var(--primary);">${p.tipo_entrega}</span></td>
+          <td>
+            <button class="btn-action btn-view" title="Ver Producto y Descripción" onclick="viewProductDetails('${p.foto_url || ''}', '${(p.descripcion || '').replace(/'/g, "\\'")}')">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+          </td>
+          <td>
+            <select style="padding:4px 8px; border-radius:12px; font-weight:700; font-size:0.75rem;" 
+                    class="${badgeClass}" 
+                    onchange="changePedidoStatus('${p.id}', this.value)">
+              <option value="Agendado" ${p.estado === 'Agendado' ? 'selected' : ''}>AGENDADO</option>
+              <option value="Es Hoy" ${p.estado === 'Es Hoy' ? 'selected' : ''}>⚡ ES HOY</option>
+              <option value="En Camino" ${p.estado === 'En Camino' ? 'selected' : ''}>EN CAMINO</option>
+              <option value="Entregado" ${p.estado === 'Entregado' ? 'selected' : ''}>ENTREGADO</option>
+              <option value="Cancelado" ${p.estado === 'Cancelado' ? 'selected' : ''}>CANCELADO</option>
+            </select>
+          </td>
+          <td>
+            <div class="action-btns">
+              <button class="btn-action btn-delete" title="Eliminar" onclick="deletePedido('${p.id}')"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('stat-pedidos-total').innerText = cntTotal;
+      document.getElementById('stat-pedidos-hoy').innerText = cntHoy;
+      document.getElementById('stat-pedidos-camino').innerText = cntCamino;
+      document.getElementById('stat-pedidos-entregados').innerText = cntEntregados;
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('active');
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+    }
+
+    function formatMoney(num) {
+      return new Intl.NumberFormat('es-CO').format(num || 0);
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const parts = dateStr.split('-');
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').innerText = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>
