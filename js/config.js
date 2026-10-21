@@ -1,13 +1,6 @@
-// Configuración de Supabase para CUPISSA
-const SB_URL = 'https://lkdxtesgwqoizobxaawp.supabase.co';
-const SB_KEY = 'sb_publishable_Fw-f7SC-4FgTjO3y5XbqRA_Pp0m6oCQ';
-
-let supabaseClient = null;
-
-try {
-  if (typeof supabase !== 'undefined' && SB_KEY.trim() !== '') {
-    supabaseClient = supabase.createClient(SB_URL, SB_KEY);
-  }
-} catch (e) {
-  console.error("Error al inicializar Supabase:", e);
-}
+const CONFIG = {
+  SUPABASE_URL: "https://lkdxtesgwqoizobxaawp.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrZHh0ZXNnd3FvaXpvYnhhYXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODMxNjIsImV4cCI6MjEwNzY1OTE2Mn0.rDQ8n8O6I9uHY6z4goQCTFfRjE8zExkifIRWFbBLycE",
+  LATE_FEE_PERCENTAGE: 0.04,
+  LATE_FEE_DAYS_STEP: 5
+};
