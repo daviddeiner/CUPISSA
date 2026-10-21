@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CUPISSA - Panel de Administración</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="logo.png" alt="CUPISSA Logo" onerror="this.style.display='none'">
+      <h2 style="color: var(--primary-dark);">CUPISSA - Admin</h2>
+    </div>
+  </header>
+
+  <div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3>Gestión de Clientes y Créditos</h3>
+      <button class="btn" style="width: auto;" onclick="document.getElementById('modal-new-client').classList.remove('hidden')">
+        + Registrar Nuevo Cliente
+      </button>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Teléfono</th>
+            <th>Cupo Disponible</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="clients-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="modal-new-client" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>Registrar Cliente y Crédito</h3>
+      <form id="form-new-client">
+        <div class="form-group">
+          <label>Nombre Completo</label>
+          <input type="text" id="client-name-input" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Teléfono (Obligatorio)</label>
+          <input type="tel" id="client-phone-input" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Contraseña Acceso</label>
+          <input type="password" id="client-pass-input" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Cupo Total Aprobado ($)</label>
+          <input type="number" id="client-cupo-input" class="form-control" value="300000" required>
+        </div>
+        <hr style="margin: 1rem 0; border-color: var(--border-light);">
+        <div class="form-group">
+          <label>Monto Primer Crédito ($)</label>
+          <input type="number" id="monto-credit-input" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label>Frecuencia de Pago</label>
+          <select id="freq-select" class="form-control">
+            <option value="diario">Diario</option>
+            <option value="semanal">Semanal (Cada 8 días)</option>
+            <option value="quincenal">Quincenal (Cada 15 días - Omite día 31)</option>
+            <option value="mensual">Mensual</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Número de Cuotas</label>
+          <input type="number" id="cuotas-input" class="form-control" value="1" min="1" required>
+        </div>
+        <div class="form-group">
+          <label>Valor Cuota Mínima ($)</label>
+          <input type="number" id="valor-cuota-input" class="form-control" readonly>
+        </div>
+        <div class="form-group">
+          <label>Fecha Inicio Crédito</label>
+          <input type="date" id="start-date-input" class="form-control" required>
+        </div>
+        <div style="display: flex; gap: 1rem;">
+          <button type="submit" class="btn">Guardar Cliente</button>
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-new-client')">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="modal-manage-client" class="modal-backdrop hidden">
+    <div class="modal">
+      <h3>Administrar Cliente</h3>
+      <input type="hidden" id="manage-client-id">
+      <div class="form-group">
+        <label>Cupo Disponible ($)</label>
+        <input type="number" id="edit-cupo-input" class="form-control">
+      </div>
+      <button class="btn btn-secondary" onclick="saveCupoOnly()">Actualizar Cupo Solo</button>
+      
+      <hr style="margin: 1.5rem 0; border-color: var(--border-light);">
+      <h4>Créditos Activos</h4>
+      <div id="credits-container"></div>
+
+      <button class="btn" style="margin-top: 1rem;" onclick="openAddDebtModal()">+ Agregar Otra Deuda</button>
+      <button class="btn btn-secondary" style="margin-top: 0.5rem;" onclick="closeModal('modal-manage-client')">Cerrar</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/schedule.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
