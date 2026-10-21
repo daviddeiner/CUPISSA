@@ -1,120 +1,568 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="h-full bg-slate-50">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CUPISSA - Panel de Administración</title>
-  <link rel="icon" href="favicon.ico">
-  <link rel="stylesheet" href="css/styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUPISSA - Panel de Administración de Créditos</title>
+    
+    <!-- FAVICON CORREGIDO (.PNG) -->
+    <link rel="shortcut icon" href="favicon.png" type="image/png">
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="favicon.png">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#fdf4ff',
+                            100: '#fae8ff',
+                            200: '#f5d0fe',
+                            300: '#f0abfc',
+                            400: '#e879f9',
+                            500: '#db2777', // Fucsia Fuerte Institucional
+                            600: '#be185d',
+                            700: '#9d174d',
+                            800: '#831843',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        .fuchsia-btn { background-color: #db2777; color: white; }
+        .fuchsia-btn:hover { background-color: #be185d; }
+        .fuchsia-bg { background-color: #db2777; }
+        .fuchsia-text { color: #db2777; }
+        .fuchsia-border { border-color: #db2777; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #f0abfc; border-radius: 9999px; }
+    </style>
 </head>
-<body>
-  <header>
-    <div class="brand">
-      <img src="logo.png" alt="CUPISSA Logo" onerror="this.style.display='none'">
-      <h2 style="color: var(--primary-dark);">CUPISSA - Admin</h2>
+<body class="h-full flex flex-col bg-slate-50 text-slate-800 font-sans">
+
+    <!-- HEADER: ÚNICAMENTE LOGO.PNG -->
+    <header class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-20">
+                <div class="flex items-center">
+                    <img src="logo.png" alt="CUPISSA" class="h-12 w-auto object-contain">
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        
+        <!-- HEADER ADMIN -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+                    <i class="fa-solid fa-user-gear fuchsia-text"></i>
+                    <span>Panel de Administración de Créditos</span>
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">Gestión de cupo disponible, creación de clientes y deudas.</p>
+            </div>
+            <button onclick="openNewClientModal()" class="px-5 py-3 fuchsia-btn rounded-2xl text-xs font-black shadow-md flex items-center space-x-2 self-start sm:self-center">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Registrar Nuevo Cliente</span>
+            </button>
+        </div>
+
+        <!-- SEARCH BAR -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div class="relative w-full sm:w-80">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </span>
+                <input type="text" id="admin-search-input" onkeyup="filterAdminTable()" placeholder="Buscar por nombre o teléfono..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-pink-500 font-medium">
+            </div>
+            
+            <div class="text-xs text-slate-500 font-semibold">
+                Clientes Registrados: <strong id="val-total-clients" class="fuchsia-text font-black">0</strong>
+            </div>
+        </div>
+
+        <!-- TABLA DE CLIENTES -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100">
+                        <tr>
+                            <th class="p-4">CLIENTE</th>
+                            <th class="p-4">TELÉFONO (LOGIN)</th>
+                            <th class="p-4">CUPO TOTAL</th>
+                            <th class="p-4">CUPO DISPONIBLE</th>
+                            <th class="p-4">DEUDA ACTUAL TOTAL</th>
+                            <th class="p-4">DEUDAS ACTIVAS</th>
+                            <th class="p-4 text-center">ACCIONES</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-tbody" class="divide-y divide-slate-100">
+                        <!-- Carga dinámica -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL 1: REGISTRAR NUEVO CLIENTE -->
+    <div id="modal-new-client" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-900 text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-user-plus fuchsia-text"></i>
+                    <span>Registrar Nuevo Cliente</span>
+                </h3>
+                <button onclick="closeNewClientModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleCreateNewClient(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">NOMBRE COMPLETO *</label>
+                    <input type="text" id="new-client-name" required placeholder="Ej: María Rodríguez" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold fuchsia-text uppercase mb-1">TELÉFONO (LOGIN) *</label>
+                        <input type="tel" id="new-client-phone" required placeholder="3000000000" class="w-full border fuchsia-border rounded-xl px-3 py-2 font-bold">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-500 uppercase mb-1">CORREO (OPCIONAL)</label>
+                        <input type="email" id="new-client-email" placeholder="Opcional" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">CONTRASEÑA DE INGRESO *</label>
+                    <input type="password" id="new-client-password" required placeholder="••••••••" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">CUPO TOTAL ($) *</label>
+                        <input type="number" id="new-client-cupo" required value="500000" onchange="calcPreviewNewClient()" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">MONTO DEUDA INICIAL ($)</label>
+                        <input type="number" id="new-client-deuda" value="300000" onchange="calcPreviewNewClient()" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold fuchsia-text uppercase mb-1">FECHA DE INICIO DE CRÉDITO *</label>
+                    <input type="date" id="new-client-fecha-inicio" required onchange="calcPreviewNewClient()" class="w-full border fuchsia-border rounded-xl px-3 py-2 font-bold">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">FRECUENCIA</label>
+                        <select id="new-client-frecuencia" onchange="calcPreviewNewClient()" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
+                            <option value="Quincenal" selected>Quincenal (+15 días)</option>
+                            <option value="Semanal">Semanal (+7 días)</option>
+                            <option value="Diario">Diario (+1 día)</option>
+                            <option value="Mensual">Mensual (+1 mes)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">NÚMERO DE CUOTAS</label>
+                        <input type="number" id="new-client-cuotas" value="6" min="1" onchange="calcPreviewNewClient()" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
+                    </div>
+                </div>
+
+                <!-- PREVIEW BANNER -->
+                <div class="bg-pink-50 border border-pink-100 rounded-2xl p-3 text-[11px] space-y-1">
+                    <div>Cupo Disponible Inicial: <strong id="prev-cupo-disp" class="fuchsia-text">$ 200.000</strong></div>
+                    <div>Valor Cuota Base: <strong id="prev-cuota-val" class="fuchsia-text">$ 50.000</strong></div>
+                    <div id="prev-fechas" class="text-[10px] text-slate-500">Próximo Pago: Calculado automáticamente.</div>
+                </div>
+
+                <div class="flex items-center space-x-3 pt-3 border-t border-slate-100">
+                    <button type="button" onclick="closeNewClientModal()" class="w-1/2 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold">Cancelar</button>
+                    <button type="submit" class="w-1/2 py-2.5 fuchsia-btn rounded-xl font-bold shadow-md">Crear Cliente</button>
+                </div>
+            </form>
+        </div>
     </div>
-  </header>
 
-  <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-      <h3>Gestión de Clientes y Créditos</h3>
-      <button class="btn" style="width: auto;" onclick="document.getElementById('modal-new-client').classList.remove('hidden')">
-        + Registrar Nuevo Cliente
-      </button>
+    <!-- MODAL 2: ADMINISTRAR CLIENTE Y ELIMINAR -->
+    <div id="modal-edit-client" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-900 text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-sliders fuchsia-text"></i>
+                    <span>Administrar Cliente y Deudas</span>
+                </h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <input type="hidden" id="edit-client-id">
+
+            <!-- BLOQUE INFORMACIÓN CLIENTE -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl text-xs">
+                <div>
+                    <label class="block font-bold text-slate-400 uppercase mb-1">NOMBRE</label>
+                    <input type="text" id="edit-client-name" disabled class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-bold text-slate-800">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-400 uppercase mb-1">TELÉFONO (LOGIN)</label>
+                    <input type="text" id="edit-client-phone" disabled class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 font-bold fuchsia-text">
+                </div>
+                <div>
+                    <label class="block font-bold fuchsia-text uppercase mb-1">CUPO DISPONIBLE ($)</label>
+                    <input type="number" id="edit-client-cupo" class="w-full border-2 fuchsia-border bg-white rounded-xl px-3 py-2 font-black fuchsia-text">
+                </div>
+            </div>
+
+            <!-- LISTA DE DEUDAS -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h4 class="text-xs font-black uppercase text-slate-700">DEUDAS DEL CLIENTE:</h4>
+                    <button onclick="openAddDebtPrompt()" class="px-3 py-1.5 fuchsia-btn rounded-xl text-xs font-bold shadow-md flex items-center space-x-1">
+                        <i class="fa-solid fa-plus-circle"></i>
+                        <span>Agregar Otra Deuda</span>
+                    </button>
+                </div>
+
+                <div id="admin-debts-container" class="space-y-3">
+                    <!-- Carga dinámica -->
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                <button onclick="deleteClientComplete()" class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold text-xs">
+                    <i class="fa-solid fa-trash mr-1"></i> Eliminar Cliente Completo
+                </button>
+                <div class="flex space-x-2">
+                    <button onclick="closeEditModal()" class="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-xs">Cerrar</button>
+                    <button onclick="saveClientChanges()" class="px-4 py-2.5 fuchsia-btn rounded-xl font-bold text-xs shadow-md">Guardar Cambios de Cupo</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="card">
-      <table>
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Teléfono</th>
-            <th>Cupo Disponible</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="clients-tbody"></tbody>
-      </table>
-    </div>
-  </div>
+    <script>
+        const SUPABASE_URL = 'https://lkdxtesgwqoizobxaawp.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrZHh0ZXNnd3FvaXpvYnhhYXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODMxNjIsImV4cCI6MjEwNzY1OTE2Mn0.rDQ8n8O6I9uHY6z4goQCTFfRjE8zExkifIRWFbBLycE';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  <div id="modal-new-client" class="modal-backdrop hidden">
-    <div class="modal">
-      <h3>Registrar Cliente y Crédito</h3>
-      <form id="form-new-client">
-        <div class="form-group">
-          <label>Nombre Completo</label>
-          <input type="text" id="client-name-input" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label>Teléfono (Obligatorio)</label>
-          <input type="tel" id="client-phone-input" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label>Contraseña Acceso</label>
-          <input type="password" id="client-pass-input" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label>Cupo Total Aprobado ($)</label>
-          <input type="number" id="client-cupo-input" class="form-control" value="300000" required>
-        </div>
-        <hr style="margin: 1rem 0; border-color: var(--border-light);">
-        <div class="form-group">
-          <label>Monto Primer Crédito ($)</label>
-          <input type="number" id="monto-credit-input" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label>Frecuencia de Pago</label>
-          <select id="freq-select" class="form-control">
-            <option value="diario">Diario</option>
-            <option value="semanal">Semanal (Cada 8 días)</option>
-            <option value="quincenal">Quincenal (Cada 15 días - Omite día 31)</option>
-            <option value="mensual">Mensual</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Número de Cuotas</label>
-          <input type="number" id="cuotas-input" class="form-control" value="1" min="1" required>
-        </div>
-        <div class="form-group">
-          <label>Valor Cuota Mínima ($)</label>
-          <input type="number" id="valor-cuota-input" class="form-control" readonly>
-        </div>
-        <div class="form-group">
-          <label>Fecha Inicio Crédito</label>
-          <input type="date" id="start-date-input" class="form-control" required>
-        </div>
-        <div style="display: flex; gap: 1rem;">
-          <button type="submit" class="btn">Guardar Cliente</button>
-          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-new-client')">Cancelar</button>
-        </div>
-      </form>
-    </div>
-  </div>
+        let allClients = [];
 
-  <div id="modal-manage-client" class="modal-backdrop hidden">
-    <div class="modal">
-      <h3>Administrar Cliente</h3>
-      <input type="hidden" id="manage-client-id">
-      <div class="form-group">
-        <label>Cupo Disponible ($)</label>
-        <input type="number" id="edit-cupo-input" class="form-control">
-      </div>
-      <button class="btn btn-secondary" onclick="saveCupoOnly()">Actualizar Cupo Solo</button>
-      
-      <hr style="margin: 1.5rem 0; border-color: var(--border-light);">
-      <h4>Créditos Activos</h4>
-      <div id="credits-container"></div>
+        window.onload = function() {
+            fetchAdminData();
+        };
 
-      <button class="btn" style="margin-top: 1rem;" onclick="openAddDebtModal()">+ Agregar Otra Deuda</button>
-      <button class="btn btn-secondary" style="margin-top: 0.5rem;" onclick="closeModal('modal-manage-client')">Cerrar</button>
-    </div>
-  </div>
+        async function fetchAdminData() {
+            const { data: clientes, error } = await supabaseClient
+                .from('clientes')
+                .select('*, creditos(*)');
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/config.js"></script>
-  <script src="js/supabase.js"></script>
-  <script src="js/schedule.js"></script>
-  <script src="js/admin.js"></script>
+            if (error) {
+                console.error(error);
+                return;
+            }
+
+            allClients = clientes || [];
+            renderAdminTable(allClients);
+        }
+
+        function renderAdminTable(list) {
+            const tbody = document.getElementById('admin-tbody');
+            document.getElementById('val-total-clients').innerText = list.length;
+            tbody.innerHTML = '';
+
+            if (list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">No hay clientes registrados.</td></tr>`;
+                return;
+            }
+
+            list.forEach(client => {
+                const creditos = client.creditos || [];
+                const creditosActivos = creditos.filter(c => c.estado === 'ACTIVO');
+                const deudaTotal = creditosActivos.reduce((acc, c) => acc + Number(c.deuda_actual || 0), 0);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4 font-bold text-slate-900">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-8 h-8 rounded-xl fuchsia-bg text-white flex items-center justify-center font-black text-xs">
+                                ${client.nombre.substring(0,2).toUpperCase()}
+                            </div>
+                            <span>${client.nombre}</span>
+                        </div>
+                    </td>
+                    <td class="p-4 font-mono font-bold fuchsia-text bg-pink-50/30">${client.telefono}</td>
+                    <td class="p-4 font-semibold text-slate-700">${formatCOP(client.cupo_total || 0)}</td>
+                    <td class="p-4 font-black fuchsia-text bg-pink-50/20">${formatCOP(client.cupo_disponible || 0)}</td>
+                    <td class="p-4 font-bold fuchsia-text">${formatCOP(deudaTotal)}</td>
+                    <td class="p-4 font-bold">
+                        ${creditosActivos.length > 0 
+                            ? `<span class="px-2 py-0.5 rounded-full text-[10px] bg-pink-100 fuchsia-text font-black">${creditosActivos.length} Activa(s)</span>`
+                            : `<span class="text-slate-400 font-normal">Sin deudas</span>`}
+                    </td>
+                    <td class="p-4 text-center">
+                        <button onclick="openEditModal('${client.id}')" class="px-3 py-1.5 bg-pink-50 hover:bg-pink-100 fuchsia-text border border-pink-200 rounded-xl font-bold text-xs transition-all">
+                            <i class="fa-solid fa-gear"></i> Administrar
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterAdminTable() {
+            const query = document.getElementById('admin-search-input').value.toLowerCase();
+            const filtered = allClients.filter(c => 
+                c.nombre.toLowerCase().includes(query) || c.telefono.includes(query)
+            );
+            renderAdminTable(filtered);
+        }
+
+        function openNewClientModal() {
+            document.getElementById('new-client-fecha-inicio').value = new Date().toISOString().split('T')[0];
+            document.getElementById('modal-new-client').classList.remove('hidden');
+            calcPreviewNewClient();
+        }
+
+        function closeNewClientModal() {
+            document.getElementById('modal-new-client').classList.add('hidden');
+        }
+
+        function calcPreviewNewClient() {
+            const cupo = parseFloat(document.getElementById('new-client-cupo').value) || 0;
+            const deuda = parseFloat(document.getElementById('new-client-deuda').value) || 0;
+            const cuotas = parseInt(document.getElementById('new-client-cuotas').value) || 1;
+            const fechaStart = document.getElementById('new-client-fecha-inicio').value;
+            const freq = document.getElementById('new-client-frecuencia').value;
+
+            document.getElementById('prev-cupo-disp').innerText = formatCOP(cupo - deuda);
+            document.getElementById('prev-cuota-val').innerText = formatCOP(deuda > 0 ? Math.ceil(deuda / cuotas) : 0);
+
+            if (fechaStart) {
+                const p1 = calculateNextDueDate(fechaStart, freq);
+                document.getElementById('prev-fechas').innerText = `Próximo Pago: ${formatDate(p1)}`;
+            }
+        }
+
+        // LÓGICA DE FRECUENCIAS: QUINCENAL SUMA 15 DÍAS DESDE CUALQUIER FECHA INICIAL
+        function calculateNextDueDate(startDateStr, frequency) {
+            let d = new Date(startDateStr + 'T00:00:00');
+            
+            if (frequency === 'Diario') {
+                d.setDate(d.getDate() + 1);
+            } else if (frequency === 'Semanal') {
+                d.setDate(d.getDate() + 7);
+            } else if (frequency === 'Quincenal') {
+                d.setDate(d.getDate() + 15);
+            } else if (frequency === 'Mensual') {
+                d.setMonth(d.getMonth() + 1);
+            }
+            return d.toISOString().split('T')[0];
+        }
+
+        async function handleCreateNewClient(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('new-client-name').value;
+            const telefono = document.getElementById('new-client-phone').value;
+            const correo = document.getElementById('new-client-email').value;
+            const password = document.getElementById('new-client-password').value;
+            const cupoTotal = parseFloat(document.getElementById('new-client-cupo').value) || 0;
+            const deudaInicial = parseFloat(document.getElementById('new-client-deuda').value) || 0;
+            const fechaInicio = document.getElementById('new-client-fecha-inicio').value;
+            const frecuencia = document.getElementById('new-client-frecuencia').value;
+            const cuotas = parseInt(document.getElementById('new-client-cuotas').value) || 1;
+
+            const cupoDisponible = cupoTotal - deudaInicial;
+
+            const { data: newClient, error: errClient } = await supabaseClient
+                .from('clientes')
+                .insert([{ nombre, telefono, correo, password, cupo_total: cupoTotal, cupo_disponible: cupoDisponible }])
+                .select()
+                .single();
+
+            if (errClient) {
+                alert('Error al crear cliente: ' + errClient.message);
+                return;
+            }
+
+            if (deudaInicial > 0) {
+                const valorCuota = Math.ceil(deudaInicial / cuotas);
+                await supabaseClient.from('creditos').insert([{
+                    cliente_id: newClient.id,
+                    monto_total: deudaInicial,
+                    deuda_actual: deudaInicial,
+                    frecuencia: frecuencia,
+                    numero_cuotas: cuotas,
+                    valor_cuota: valorCuota,
+                    proximo_vencimiento: fechaInicio,
+                    estado: 'ACTIVO'
+                }]);
+            }
+
+            closeNewClientModal();
+            fetchAdminData();
+            alert('¡Cliente registrado exitosamente!');
+        }
+
+        function openEditModal(clientId) {
+            const client = allClients.find(c => c.id === clientId);
+            if (!client) return;
+
+            document.getElementById('edit-client-id').value = client.id;
+            document.getElementById('edit-client-name').value = client.nombre;
+            document.getElementById('edit-client-phone').value = client.telefono;
+            document.getElementById('edit-client-cupo').value = client.cupo_disponible || 0;
+
+            renderAdminDebtsList(client);
+            document.getElementById('modal-edit-client').classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            document.getElementById('modal-edit-client').classList.add('hidden');
+        }
+
+        function renderAdminDebtsList(client) {
+            const container = document.getElementById('admin-debts-container');
+            container.innerHTML = '';
+
+            const creditos = client.creditos || [];
+            if (creditos.length === 0) {
+                container.innerHTML = `<div class="p-4 bg-slate-50 text-slate-400 rounded-2xl text-center text-xs">Este cliente no tiene deudas activas.</div>`;
+                return;
+            }
+
+            creditos.forEach((cred, idx) => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-2xl border border-slate-200 space-y-2 shadow-sm text-xs";
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <div>
+                            <span class="font-extrabold text-slate-900">Deuda #${idx + 1}</span>
+                            <span class="text-[10px] text-slate-400 block">${cred.frecuencia} • ${cred.numero_cuotas} cuotas • Cuota: ${formatCOP(cred.valor_cuota)} • Vence: ${formatDate(cred.proximo_vencimiento)}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-black fuchsia-text text-sm block">${formatCOP(cred.deuda_actual)}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${cred.estado === 'ACTIVO' ? 'bg-pink-100 fuchsia-text' : 'bg-slate-100 text-slate-600'}">${cred.estado}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function saveClientChanges() {
+            const clientId = document.getElementById('edit-client-id').value;
+            const nuevoCupo = parseFloat(document.getElementById('edit-client-cupo').value) || 0;
+
+            const { error } = await supabaseClient
+                .from('clientes')
+                .update({ cupo_disponible: nuevoCupo })
+                .eq('id', clientId);
+
+            if (error) {
+                alert('Error al guardar: ' + error.message);
+                return;
+            }
+
+            closeEditModal();
+            fetchAdminData();
+            alert('¡Cupo actualizado con éxito!');
+        }
+
+        async function deleteClientComplete() {
+            const id = document.getElementById('edit-client-id').value;
+            if (!confirm('¿Estás seguro de eliminar este cliente? Se borrarán también todos sus créditos permanentemente.')) return;
+
+            await supabaseClient.from('creditos').delete().eq('cliente_id', id);
+            const { error } = await supabaseClient.from('clientes').delete().eq('id', id);
+
+            if (error) {
+                alert('Error al eliminar: ' + error.message);
+                return;
+            }
+
+            closeEditModal();
+            fetchAdminData();
+            alert('¡Cliente y créditos eliminados correctamente!');
+        }
+
+        async function openAddDebtPrompt() {
+            const clientId = document.getElementById('edit-client-id').value;
+            const client = allClients.find(c => c.id === clientId);
+            
+            const montoStr = prompt('Monto de la nueva deuda ($):');
+            if (!montoStr || isNaN(montoStr)) return;
+            const monto = parseFloat(montoStr);
+
+            const cuotasStr = prompt('Número de cuotas para esta nueva deuda:', '4');
+            if (!cuotasStr || isNaN(cuotasStr)) return;
+            const cuotas = parseInt(cuotasStr);
+
+            let frecuencia = 'Quincenal';
+            let fechaVenc = new Date().toISOString().split('T')[0];
+
+            if (client && client.creditos && client.creditos.length > 0) {
+                const activa = client.creditos.find(c => c.estado === 'ACTIVO');
+                if (activa) {
+                    frecuencia = activa.frecuencia;
+                    fechaVenc = activa.proximo_vencimiento;
+                }
+            }
+
+            const valorCuota = Math.ceil(monto / cuotas);
+            const nuevoCupo = Math.max(0, (client.cupo_disponible || 0) - monto);
+            await supabaseClient.from('clientes').update({ cupo_disponible: nuevoCupo }).eq('id', clientId);
+
+            await supabaseClient.from('creditos').insert([{
+                cliente_id: clientId,
+                monto_total: monto,
+                deuda_actual: monto,
+                frecuencia: frecuencia,
+                numero_cuotas: cuotas,
+                valor_cuota: valorCuota,
+                proximo_vencimiento: fechaVenc,
+                estado: 'ACTIVO'
+            }]);
+
+            fetchAdminData();
+            closeEditModal();
+            alert('¡Nueva deuda agregada y combinada exitosamente!');
+        }
+
+        function formatCOP(val) {
+            return '$ ' + new Intl.NumberFormat('es-CO').format(val || 0);
+        }
+
+        function formatDate(str) {
+            if (!str) return 'N/A';
+            const parts = str.split('-');
+            if (parts.length === 3) {
+                const date = new Date(parts[0], parts[1] - 1, parts[2]);
+                return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+            }
+            return str;
+        }
+    </script>
 </body>
 </html>
