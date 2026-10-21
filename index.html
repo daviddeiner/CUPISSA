@@ -3,351 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CUPISSA - Gestión de Créditos y Pedidos</title>
-  
-  <!-- FontAwesome e Inter Font -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  
-  <!-- Supabase JS Client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Hojas de Estilos Modulares -->
-  <link rel="stylesheet" href="assets/css/main.css">
-  <link rel="stylesheet" href="assets/css/layout.css">
-  <link rel="stylesheet" href="assets/css/components.css">
-  <link rel="stylesheet" href="assets/css/mobile.css">
+  <title>CUPISSA - Iniciar Sesión</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-
-  <!-- HEADER -->
   <header>
     <div class="brand">
-      <div class="brand-logo">C</div>
-      <div class="brand-text">
-        <h1>CUPISSA</h1>
-        <p>Sistema de Gestión & Pedidos</p>
-      </div>
-    </div>
-
-    <div class="nav-tabs">
-      <button class="nav-btn active" onclick="switchTab('creditos')">
-        <i class="fa-solid fa-hand-holding-dollar"></i> Créditos
-      </button>
-      <button class="nav-btn" onclick="switchTab('pedidos')">
-        <i class="fa-solid fa-box-open"></i> Pedidos
-      </button>
-    </div>
-
-    <div class="header-actions">
-      <div id="cloudBadge" class="status-badge-cloud cloud-local">
-        <i class="fa-solid fa-cloud-arrow-up"></i> <span id="cloudText">Sincronizando...</span>
-      </div>
-      <button class="icon-btn" onclick="toggleDarkMode()" title="Cambiar Tema">
-        <i class="fa-solid fa-moon" id="theme-icon"></i>
-      </button>
+      <img src="logo.png" alt="CUPISSA Logo" onerror="this.style.display='none'">
+      <h2 style="color: var(--primary-dark);">CUPISSA</h2>
     </div>
   </header>
 
-  <main>
-    <!-- VISTA 1: CRÉDITOS -->
-    <section id="tab-creditos" class="tab-content active">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon"><i class="fa-solid fa-wallet"></i></div>
-          <div class="stat-data">
-            <h3>Cartera Total</h3>
-            <p id="stat-credito-total">$0</p>
-          </div>
+  <div class="container" style="max-width: 400px; margin-top: 4rem;">
+    <div class="card">
+      <h3 style="text-align: center; margin-bottom: 1.5rem; color: var(--primary-dark);">Acceso a Clientes</h3>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="phone">Teléfono Móvil</label>
+          <input type="tel" id="phone" class="form-control" placeholder="Ej: 3001234567" required>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
-          <div class="stat-data">
-            <h3>Deuda Pendiente</h3>
-            <p id="stat-credito-deuda">$0</p>
-          </div>
+        <div class="form-group">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" class="form-control" placeholder="••••••••" required>
         </div>
-        <div class="stat-card">
-          <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
-          <div class="stat-data">
-            <h3>Total Recaudado</h3>
-            <p id="stat-credito-pagado">$0</p>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
-          <div class="stat-data">
-            <h3>Créditos Activos</h3>
-            <p id="stat-credito-activos">0</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <i class="fa-solid fa-list-check" style="color:var(--primary)"></i> Listado de Créditos
-          </div>
-          <button class="btn-primary" onclick="openCreditoModal()">
-            <i class="fa-solid fa-plus"></i> Nuevo Crédito
-          </button>
-        </div>
-
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Frecuencia</th>
-                <th>Cuotas Pend.</th>
-                <th>Valor Cuota</th>
-                <th>Próx. Vencimiento</th>
-                <th>Deuda Actual</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-creditos"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- VISTA 2: PEDIDOS -->
-    <section id="tab-pedidos" class="tab-content">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon"><i class="fa-solid fa-boxes-packing"></i></div>
-          <div class="stat-data">
-            <h3>Total Pedidos</h3>
-            <p id="stat-pedidos-total">0</p>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#fef08a; color:#854d0e;"><i class="fa-solid fa-bell"></i></div>
-          <div class="stat-data">
-            <h3>Para Entregar Hoy</h3>
-            <p id="stat-pedidos-hoy">0</p>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#fed7aa; color:#c2410c;"><i class="fa-solid fa-truck-fast"></i></div>
-          <div class="stat-data">
-            <h3>En Camino</h3>
-            <p id="stat-pedidos-camino">0</p>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" style="background:#dcfce7; color:#15803d;"><i class="fa-solid fa-circle-check"></i></div>
-          <div class="stat-data">
-            <h3>Entregados</h3>
-            <p id="stat-pedidos-entregados">0</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">
-            <i class="fa-solid fa-truck-ramp-box" style="color:var(--secondary)"></i> Listado de Pedidos
-          </div>
-          <button class="btn-primary" onclick="openPedidoModal()">
-            <i class="fa-solid fa-plus"></i> Registrar Pedido
-          </button>
-        </div>
-
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Contacto</th>
-                <th>Dirección</th>
-                <th>Fechas</th>
-                <th>Costos & Pagos</th>
-                <th>Detalles</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody id="tabla-pedidos"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- MODAL: NUEVO/EDITAR CRÉDITO -->
-  <div class="modal-overlay" id="modalCredito">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modalCreditoTitle">Nuevo Crédito</h2>
-        <button class="btn-action" onclick="closeModal('modalCredito')"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <form id="formCredito" onsubmit="saveCredito(event)">
-        <input type="hidden" id="credito-id">
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Cliente *</label>
-              <input type="text" id="cred-cliente" required placeholder="Nombre completo">
-            </div>
-            <div class="form-group">
-              <label>Teléfono *</label>
-              <input type="tel" id="cred-telefono" required placeholder="Ej: 3001234567">
-            </div>
-            <div class="form-group">
-              <label>Frecuencia *</label>
-              <select id="cred-frecuencia" required>
-                <option value="Diario">Diario</option>
-                <option value="Semanal" selected>Semanal</option>
-                <option value="Quincenal">Quincenal</option>
-                <option value="Mensual">Mensual</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Fecha de Entrega/Inicio *</label>
-              <input type="date" id="cred-fecha-entrega" required>
-            </div>
-            <div class="form-group">
-              <label>Número de Cuotas *</label>
-              <input type="number" id="cred-num-cuotas" min="1" required placeholder="Ej: 4">
-            </div>
-            <div class="form-group">
-              <label>Valor por Cuota ($) *</label>
-              <input type="number" id="cred-valor-cuota" min="1" required placeholder="Ej: 20000">
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" onclick="closeModal('modalCredito')">Cancelar</button>
-          <button type="submit" class="btn-primary">Guardar Crédito</button>
-        </div>
+        <button type="submit" class="btn">Ingresar</button>
       </form>
     </div>
   </div>
 
-  <!-- MODAL: NUEVO / EDITAR PEDIDO -->
-  <div class="modal-overlay" id="modalPedido">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modalPedidoTitle">Registrar Pedido</h2>
-        <button class="btn-action" onclick="closeModal('modalPedido')"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <form id="formPedido" onsubmit="savePedido(event)">
-        <input type="hidden" id="pedido-id">
-        <div class="modal-body">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Nombres y Apellidos *</label>
-              <input type="text" id="ped-nombre" required placeholder="Ej: María Pérez">
-            </div>
-            <div class="form-group">
-              <label>Teléfono *</label>
-              <input type="tel" id="ped-telefono" required placeholder="Ej: 3109876543">
-            </div>
-            <div class="form-group">
-              <label>Cédula (Opcional)</label>
-              <input type="text" id="ped-cedula" placeholder="Cédula">
-            </div>
-            <div class="form-group">
-              <label>Correo (Opcional)</label>
-              <input type="email" id="ped-correo" placeholder="correo@ejemplo.com">
-            </div>
-            <div class="form-group full">
-              <label>Dirección Exacta *</label>
-              <input type="text" id="ped-direccion" required placeholder="Calle, Carrera, N°">
-            </div>
-            <div class="form-group">
-              <label>Barrio *</label>
-              <input type="text" id="ped-barrio" required placeholder="Barrio">
-            </div>
-            <div class="form-group">
-              <label>Ciudad *</label>
-              <input type="text" id="ped-ciudad" required placeholder="Ciudad">
-            </div>
-            <div class="form-group">
-              <label>Tipo de Pedido *</label>
-              <select id="ped-tipo" onchange="toggleTipoFechas()" required>
-                <option value="Domicilio">Domicilio Local</option>
-                <option value="Envío">Envío Nacional/Empresa</option>
-              </select>
-            </div>
-            <div class="form-group" id="group-fecha-entrega">
-              <label>Fecha Estimada de Entrega *</label>
-              <input type="date" id="ped-fecha-entrega">
-            </div>
-            <div class="form-group" id="group-fecha-envio" style="display:none;">
-              <label>Fecha de Envío *</label>
-              <input type="date" id="ped-fecha-envio">
-            </div>
-            <div class="form-group">
-              <label>Valor del Producto ($) *</label>
-              <input type="number" id="ped-val-prod" min="0" oninput="calcularTotalPedido()" required value="0">
-            </div>
-            <div class="form-group">
-              <label>Valor del Domicilio/Envío ($) *</label>
-              <input type="number" id="ped-val-dom" min="0" oninput="calcularTotalPedido()" required value="0">
-            </div>
-            <div class="form-group">
-              <label>Anticipo / Abono ($)</label>
-              <input type="number" id="ped-anticipo" min="0" oninput="calcularTotalPedido()" required value="0">
-            </div>
-            <div class="form-group">
-              <label style="color:var(--primary); font-weight:800; font-size:0.95rem;">Total: $<span id="ped-total-txt">0</span></label>
-              <label style="color:#dc2626; font-weight:800; font-size:0.95rem; margin-top:4px;">Saldo Restante: $<span id="ped-saldo-txt">0</span></label>
-            </div>
-            <div class="form-group full">
-              <label>Fotos del Producto (Puedes seleccionar varias imágenes)</label>
-              <input type="file" id="ped-fotos-files" accept="image/*" multiple>
-            </div>
-            <div class="form-group full">
-              <label>Descripción del Producto</label>
-              <textarea id="ped-descripcion" rows="3" placeholder="Detalles, colores, notas del pedido..."></textarea>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" onclick="closeModal('modalPedido')">Cancelar</button>
-          <button type="submit" class="btn-primary">Guardar Pedido</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL: VER PRODUCTO Y DESCRIPCIÓN (GALERÍA) -->
-  <div class="modal-overlay" id="modalVerProducto">
-    <div class="modal" style="max-width: 550px;">
-      <div class="modal-header">
-        <h2>Detalles del Pedido</h2>
-        <button class="btn-action" onclick="closeModal('modalVerProducto')"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-      <div class="modal-body">
-        <label style="font-weight:700; margin-bottom:8px; display:block;">Imágenes del Producto:</label>
-        <div id="ver-galeria-imgs" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 1rem;"></div>
-        <p id="ver-noimg" style="color: var(--text-muted); text-align: center; padding: 1rem; background: var(--bg-main); border-radius: 8px; display:none;">Sin imágenes adjuntas</p>
-        
-        <label style="font-weight: 700; display:block; margin-top:10px;">Descripción:</label>
-        <p id="ver-producto-desc" style="margin-top: 4px; padding: 12px; background: var(--bg-main); border-radius: 8px; font-size: 0.9rem; min-height: 70px;"></p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn-primary" onclick="closeModal('modalVerProducto')">Cerrar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- NOTIFICACIÓN TOAST -->
-  <div class="toast" id="toast">
-    <i class="fa-solid fa-circle-check" style="color:#16a34a"></i>
-    <span id="toast-msg">Mensaje</span>
-  </div>
-
-  <!-- Scripts Modulares -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
-  <script src="js/state.js"></script>
   <script src="js/supabase.js"></script>
-  <script src="js/creditos.js"></script>
-  <script src="js/pedidos.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
 </body>
 </html>
