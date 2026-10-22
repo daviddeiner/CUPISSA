@@ -20,8 +20,7 @@ function generateWompiIntegritySignature(reference, amountInCents, currency, sec
 }
 
 /**
- * Calcula la fecha de pago fija según la frecuencia
- * Para Quincenal: Días fijos (15 y 30/31 del mes)
+ * Calcula la fecha de pago adaptada a cualquier frecuencia y día estándar del mes
  */
 function calculateNextDueDate(currentDateStr, frequency) {
     if (!currentDateStr) {
@@ -37,15 +36,24 @@ function calculateNextDueDate(currentDateStr, frequency) {
     } else if (frequency === 'Semanal') {
         d.setDate(d.getDate() + 7);
     } else if (frequency === 'Quincenal') {
+        // Mantiene el desfase estándar respetando el día base (ej: 5 y 20, 10 y 25, etc.)
         if (day <= 15) {
-            const lastDay = new Date(year, month, 0).getDate();
-            d = new Date(year, month - 1, Math.min(30, lastDay));
+            const lastDayOfCurrentMonth = new Date(year, month, 0).getDate();
+            const targetDay = Math.min(day + 15, lastDayOfCurrentMonth);
+            d = new Date(year, month - 1, targetDay);
         } else {
+            const baseDay = day - 15;
+            let nextMonth = month;
+            let nextYear = year;
             if (month === 12) {
-                d = new Date(year + 1, 0, 15);
+                nextMonth = 1;
+                nextYear = year + 1;
             } else {
-                d = new Date(year, month, 15);
+                nextMonth = month + 1;
             }
+            const lastDayOfNextMonth = new Date(nextYear, nextMonth, 0).getDate();
+            const targetDay = Math.min(baseDay, lastDayOfNextMonth);
+            d = new Date(nextYear, nextMonth - 1, targetDay);
         }
     } else if (frequency === 'Mensual') {
         d.setMonth(d.getMonth() + 1);
