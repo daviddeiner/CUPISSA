@@ -297,6 +297,72 @@
         </div>
     </div>
 
+    <!-- MODAL 4: FORMULARIO DE DATOS DE ENVÍO Y WHATSAPP -->
+    <div id="modal-checkout-form" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+            <button onclick="closeCheckoutFormModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <h3 class="font-black text-slate-900 text-base flex items-center space-x-2 border-b border-slate-100 pb-3">
+                <i class="fa-solid fa-truck-fast fuchsia-text"></i>
+                <span>Completa tus Datos de Envío</span>
+            </h3>
+
+            <form onsubmit="sendOrderToWhatsApp(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Nombre y Apellido *</label>
+                    <input type="text" id="chk-nombre" required placeholder="Ej: Ana María Gómez" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Teléfono *</label>
+                        <input type="tel" id="chk-telefono" required placeholder="3001234567" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Correo Electrónico</label>
+                        <input type="email" id="chk-correo" placeholder="correo@example.com" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Dirección Exacta *</label>
+                    <input type="text" id="chk-direccion" required placeholder="Ej: Calle 50 # 20-30 Apt 201" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Barrio *</label>
+                        <input type="text" id="chk-barrio" required placeholder="Ej: El Prado" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-700 uppercase mb-1">Ciudad *</label>
+                        <input type="text" id="chk-ciudad" required placeholder="Ej: Barranquilla" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold fuchsia-text uppercase mb-1">Fecha de Entrega *</label>
+                    <input type="date" id="chk-fecha-entrega" required class="w-full border fuchsia-border rounded-xl px-3 py-2 font-bold">
+                    <p id="chk-fecha-nota" class="text-[10px] text-slate-400 mt-1">Calculando fecha mínima según tiempo de preparación...</p>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl text-[11px] font-bold text-amber-800 flex items-start space-x-2">
+                    <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
+                    <span>El asesor te dará el valor del domicilio/envío mediante WhatsApp.</span>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100 flex space-x-2">
+                    <button type="button" onclick="closeCheckoutFormModal()" class="w-1/2 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold">Cancelar</button>
+                    <button type="submit" class="w-1/2 py-3 fuchsia-btn rounded-xl font-black shadow-md flex items-center justify-center space-x-2">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>Enviar a WhatsApp</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script>
         const SUPABASE_URL = 'https://lkdxtesgwqoizobxaawp.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrZHh0ZXNnd3FvaXpvYnhhYXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODMxNjIsImV4cCI6MjEwNzY1OTE2Mn0.rDQ8n8O6I9uHY6z4goQCTFfRjE8zExkifIRWFbBLycE';
@@ -483,11 +549,7 @@
             selectedProductModal = prod;
             selectedQtyModal = 1;
 
-            // Configurar si permite alquiler
             const wrapperModalidad = document.getElementById('wrapper-modalidad');
-            const lblVenta = document.getElementById('lbl-mod-venta');
-            const lblAlquiler = document.getElementById('lbl-mod-alquiler');
-
             if (prod.alquiler && prod.precio_alquiler > 0) {
                 wrapperModalidad.classList.remove('hidden');
                 selectedModalidad = prod.venta ? 'venta' : 'alquiler';
@@ -506,7 +568,6 @@
             badgesContainer.innerHTML = '';
             if (prod.subcategoria) badgesContainer.innerHTML += `<span class="bg-pink-600 text-white font-black text-[9px] uppercase px-2.5 py-1 rounded-full">${prod.subcategoria}</span>`;
 
-            // Galería de fotos (múltiples fotos para un único producto)
             const mainImg = document.getElementById('opt-modal-img');
             const fotos = prod.fotos && prod.fotos.length > 0 ? prod.fotos : ['https://via.placeholder.com/400x400?text=Cupissa'];
             mainImg.src = fotos[0];
@@ -768,11 +829,77 @@
         }
 
         function checkoutCart() {
-            if (cart.length === 0) return;
-            alert('¡Gracias por tu pedido! Un asesor comercial se comunicará contigo para confirmar el pago del anticipo.');
+            if (cart.length === 0) {
+                alert('Tu carrito está vacío.');
+                return;
+            }
+            closeCartModal();
+            openCheckoutFormModal();
+        }
+
+        function openCheckoutFormModal() {
+            // Calcular el mayor tiempo de preparación de los productos en el carrito
+            let maxPrepDays = 0;
+            cart.forEach(item => {
+                const prod = rawProducts.find(p => p.id === item.productId);
+                if (prod && prod.dias_preparacion > maxPrepDays) {
+                    maxPrepDays = Number(prod.dias_preparacion);
+                }
+            });
+
+            // Fecha mínima = hoy + maxPrepDays
+            const minDate = new Date();
+            minDate.setDate(minDate.getDate() + maxPrepDays);
+            const minDateStr = minDate.toISOString().split('T')[0];
+
+            const dateInput = document.getElementById('chk-fecha-entrega');
+            dateInput.min = minDateStr;
+            dateInput.value = minDateStr;
+            document.getElementById('chk-fecha-nota').innerText = `Fecha mínima de entrega: ${formatDate(minDateStr)} (Incluye ${maxPrepDays} día(s) de preparación requeridos).`;
+
+            document.getElementById('modal-checkout-form').classList.remove('hidden');
+        }
+
+        function closeCheckoutFormModal() {
+            document.getElementById('modal-checkout-form').classList.add('hidden');
+        }
+
+        function sendOrderToWhatsApp(e) {
+            e.preventDefault();
+
+            const nombre = document.getElementById('chk-nombre').value.trim();
+            const telefono = document.getElementById('chk-telefono').value.trim();
+            const correo = document.getElementById('chk-correo').value.trim() || 'No especificado';
+            const direccion = document.getElementById('chk-direccion').value.trim();
+            const barrio = document.getElementById('chk-barrio').value.trim();
+            const ciudad = document.getElementById('chk-ciudad').value.trim();
+            const fechaEntrega = document.getElementById('chk-fecha-entrega').value;
+
+            let itemsText = '';
+            let grandTotal = 0;
+            let grandAnticipo = 0;
+
+            cart.forEach(item => {
+                grandTotal += item.total;
+                grandAnticipo += item.valorAnticipo;
+                itemsText += `\n• ${item.nombre} (${item.modalidad}) - Cant: ${item.cantidad} - Ref: CUP-${item.productId.toString().slice(-4)}`;
+                if (item.talla) itemsText += ` | Talla: ${item.talla}`;
+                if (item.color) itemsText += ` | Color: ${item.color}`;
+                if (item.customText) itemsText += ` | Personalización: "${item.customText}"`;
+                itemsText += ` | Subtotal: ${formatCOP(item.total)}`;
+            });
+
+            const message = `HOLA, ME GUSTARIA AGENDAR ESTE PEDIDO\n\nREF DE PRODUCTO/S:${itemsText}\n\nDATOS DEL CLIENTE:\n• Nombre: ${nombre}\n• Teléfono: ${telefono}\n• Correo: ${correo}\n• Dirección: ${direccion}\n• Barrio: ${barrio}\n• Ciudad: ${ciudad}\n• Fecha de Entrega: ${formatDate(fechaEntrega)}\n\nTOTAL DEL PEDIDO: ${formatCOP(grandTotal)} (Anticipo sugerido: ${formatCOP(grandAnticipo)})\n\nNota: El asesor te dará el valor del domicilio/envío mediante WhatsApp.`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/573147671380?text=${encodedMessage}`;
+
+            // Vaciar carrito
             cart = [];
             saveCart();
-            closeCartModal();
+            closeCheckoutFormModal();
+
+            window.open(whatsappUrl, '_blank');
         }
 
         function openFavoritesModal() {
@@ -807,6 +934,16 @@
 
         function formatCOP(val) {
             return '$ ' + new Intl.NumberFormat('es-CO').format(val || 0);
+        }
+
+        function formatDate(str) {
+            if (!str) return 'N/A';
+            const parts = str.split('-');
+            if (parts.length === 3) {
+                const date = new Date(parts[0], parts[1] - 1, parts[2]);
+                return date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+            }
+            return str;
         }
     </script>
 </body>
