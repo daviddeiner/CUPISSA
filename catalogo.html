@@ -132,12 +132,74 @@
             </a>
         </div>
 
-        <!-- GRILLA DE PRODUCTOS -->
-        <div id="products-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <!-- GRILLA DE PRODUCTOS (2 COLUMNAS EN MÓVIL, 3 EN LG, 4 EN XL) -->
+        <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             <!-- Renderizado dinámico -->
         </div>
 
     </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-[#0b0f19] text-slate-300 pt-16 pb-8 border-t border-slate-800 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-slate-800 text-xs">
+            
+            <!-- Columna 1: Logo y descripción -->
+            <div class="space-y-3">
+                <a href="catalogo.html">
+                    <img src="logo.png" alt="CUPISSA" class="h-10 w-auto object-contain brightness-0 invert">
+                </a>
+                <p class="text-slate-400 leading-relaxed">
+                    Soluciones integrales en comercio, alquiler, fabricación a medida y financiación directa, con cobertura en toda Colombia.
+                </p>
+            </div>
+
+            <!-- Columna 2: Atención al Cliente -->
+            <div class="space-y-3">
+                <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Atención al Cliente</h4>
+                <div class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-solid fa-envelope text-blue-400"></i>
+                    <span>contactocupissa@gmail.com</span>
+                </div>
+                <div class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-brands fa-whatsapp text-emerald-400"></i>
+                    <span>WhatsApp: 3147671380</span>
+                </div>
+                <div class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-solid fa-clock text-amber-400"></i>
+                    <span>Horario: Recepción 24h</span>
+                </div>
+            </div>
+
+            <!-- Columna 3: Términos y Políticas (Conectados a páginas individuales) -->
+            <div class="space-y-3">
+                <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Términos y Políticas</h4>
+                <ul class="space-y-2.5">
+                    <li><a href="politicas-anticipos.html" class="text-slate-400 hover:text-white transition-colors">Políticas de Anticipos</a></li>
+                    <li><a href="terminos-credito.html" class="text-slate-400 hover:text-white transition-colors">Términos Crédito Cupissa</a></li>
+                    <li><a href="tratamiento-datos.html" class="text-slate-400 hover:text-white transition-colors">Tratamiento de Datos</a></li>
+                </ul>
+            </div>
+
+            <!-- Columna 4: Medios de Pago -->
+            <div class="space-y-3">
+                <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Medios de Pago</h4>
+                <div class="space-y-2 text-slate-400 font-medium">
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-mobile-screen fuchsia-text"></i><span>NEQUI</span></div>
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-credit-card text-blue-400"></i><span>WOMPI</span></div>
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-bolt text-yellow-400"></i><span>ADDI</span></div>
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-shield-halved fuchsia-text"></i><span>CRÉDITOS CUPISSA</span></div>
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-money-bill-wave text-emerald-400"></i><span>EFECTIVO</span></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Copyright y autor -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex flex-col sm:flex-row items-center justify-between text-slate-500 text-[11px] gap-4">
+            <div>© 2026 CUPISSA S.A.S. Todos los derechos reservados.</div>
+            <div>Diseñado y Desarrollado por <span class="fuchsia-text font-bold">Deiner Gonzalez</span></div>
+        </div>
+    </footer>
 
     <!-- MODAL 1: VER OPCIONES / DETALLE DE PRODUCTO -->
     <div id="modal-product-options" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
@@ -349,7 +411,7 @@
 
                 <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl text-[11px] font-bold text-amber-800 flex items-start space-x-2">
                     <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
-                    <span>El asesor te dará el valor del domicilio/envío mediante WhatsApp.</span>
+                    <span>Por favor me cotizas el valor del domicilio/envío.</span>
                 </div>
 
                 <div class="pt-2 border-t border-slate-100 flex space-x-2">
@@ -370,6 +432,7 @@
 
         let rawProducts = [];
         let filteredProducts = [];
+        let displayLimit = 10;
         let activeMundo = 'TODOS';
         let activeTemporada = 'TODAS';
         let cart = JSON.parse(localStorage.getItem('cupissa_cart') || '[]');
@@ -377,11 +440,20 @@
 
         let selectedProductModal = null;
         let selectedQtyModal = 1;
-        let selectedModalidad = 'venta'; // 'venta' o 'alquiler'
+        let selectedModalidad = 'venta';
 
         window.onload = function() {
             updateBadges();
             fetchCatalogProducts();
+
+            window.addEventListener('scroll', () => {
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) {
+                    if (displayLimit < filteredProducts.length) {
+                        displayLimit += 10;
+                        renderProductsGrid();
+                    }
+                }
+            });
         };
 
         async function fetchCatalogProducts() {
@@ -392,8 +464,18 @@
             } catch (e) {
                 rawProducts = JSON.parse(localStorage.getItem('cupissa_local_products') || '[]');
             }
+
+            shuffleArray(rawProducts);
+
             renderFilters();
             applyFiltersAndSearch();
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
         }
 
         function renderFilters() {
@@ -441,6 +523,9 @@
             });
             const activeBtn = document.getElementById(`btn-mundo-${mundo.toLowerCase() === 'todos' ? 'todos' : mundo}`);
             if (activeBtn) activeBtn.className = "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-2 shrink-0 shadow-sm";
+            
+            shuffleArray(rawProducts);
+            displayLimit = 10;
             applyFiltersAndSearch();
         }
 
@@ -451,10 +536,14 @@
             });
             const activeBtn = document.getElementById(`btn-temp-${temp.toLowerCase() === 'todas' ? 'todas' : temp}`);
             if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
+            
+            shuffleArray(rawProducts);
+            displayLimit = 10;
             applyFiltersAndSearch();
         }
 
         function handleSmartSearch() {
+            displayLimit = 10;
             applyFiltersAndSearch();
         }
 
@@ -471,7 +560,7 @@
                 return fullText.includes(query) || fuzzyMatch(query, fullText);
             });
 
-            renderProductsGrid(filteredProducts);
+            renderProductsGrid();
         }
 
         function fuzzyMatch(term, target) {
@@ -495,45 +584,47 @@
             return matrix[a.length][b.length];
         }
 
-        function renderProductsGrid(list) {
+        function renderProductsGrid() {
             const grid = document.getElementById('products-grid');
-            document.getElementById('total-products-count').innerText = list.length;
+            document.getElementById('total-products-count').innerText = filteredProducts.length;
             grid.innerHTML = '';
 
-            if (list.length === 0) {
+            if (filteredProducts.length === 0) {
                 grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 font-semibold">No hay productos registrados en esta categoría aún.</div>`;
                 return;
             }
 
-            list.forEach(prod => {
+            const productsToShow = filteredProducts.slice(0, displayLimit);
+
+            productsToShow.forEach(prod => {
                 const isFav = favorites.some(f => f.id === prod.id);
                 const mainFoto = prod.fotos && prod.fotos.length > 0 ? prod.fotos[0] : 'https://via.placeholder.com/400x400?text=Cupissa';
 
                 const card = document.createElement('div');
-                card.className = "bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group";
+                card.className = "bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group";
                 card.innerHTML = `
                     <div>
                         <div class="relative bg-slate-100 aspect-square overflow-hidden">
                             <img src="${mainFoto}" alt="${prod.nombre}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
-                            <div class="absolute top-3 left-3 flex flex-col gap-1 items-start">
-                                ${prod.temporada ? `<span class="bg-pink-600 text-white font-black text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm">${prod.temporada}</span>` : ''}
+                            <div class="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1 items-start">
+                                ${prod.temporada ? `<span class="bg-pink-600 text-white font-black text-[8px] sm:text-[9px] uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm">${prod.temporada}</span>` : ''}
                             </div>
-                            <button onclick="toggleFavorite('${prod.id}', event)" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-md text-slate-400 hover:text-pink-600 flex items-center justify-center transition-colors shadow-sm">
-                                <i class="${isFav ? 'fa-solid fa-heart text-pink-600' : 'fa-regular fa-heart'}"></i>
+                            <button onclick="toggleFavorite('${prod.id}', event)" class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/80 backdrop-blur-md text-slate-400 hover:text-pink-600 flex items-center justify-center transition-colors shadow-sm">
+                                <i class="${isFav ? 'fa-solid fa-heart text-pink-600 text-xs sm:text-sm' : 'fa-regular fa-heart text-xs sm:text-sm'}"></i>
                             </button>
                         </div>
-                        <div class="p-4 space-y-2">
-                            <span class="text-[10px] font-black uppercase text-pink-600 tracking-wider">${prod.subcategoria || prod.categoria || 'TEXTIL'}</span>
-                            <h3 class="font-extrabold text-slate-900 text-sm uppercase tracking-tight line-clamp-1">${prod.nombre}</h3>
+                        <div class="p-3 sm:p-4 space-y-1 sm:space-y-2">
+                            <span class="text-[9px] sm:text-[10px] font-black uppercase text-pink-600 tracking-wider">${prod.subcategoria || prod.categoria || 'TEXTIL'}</span>
+                            <h3 class="font-extrabold text-slate-900 text-xs sm:text-sm uppercase tracking-tight line-clamp-1">${prod.nombre}</h3>
                         </div>
                     </div>
-                    <div class="p-4 pt-0 flex items-center justify-between border-t border-slate-50 mt-2">
+                    <div class="p-3 sm:p-4 pt-0 flex flex-col sm:flex-row sm:items-center justify-between border-t border-slate-50 mt-2 gap-2">
                         <div>
-                            <span class="text-[10px] text-slate-400 block font-semibold">Precio Base</span>
-                            <span class="font-black text-slate-900 text-base">${formatCOP(prod.precio_detal)}</span>
+                            <span class="text-[9px] sm:text-[10px] text-slate-400 block font-semibold">Precio Base</span>
+                            <span class="font-black text-slate-900 text-xs sm:text-base">${formatCOP(prod.precio_detal)}</span>
                         </div>
-                        <button onclick="openOptionsModal('${prod.id}')" class="px-4 py-2 fuchsia-btn font-extrabold rounded-2xl text-xs shadow-md transition-all flex items-center space-x-1.5">
-                            <i class="fa-solid fa-bag-shopping text-[10px]"></i>
+                        <button onclick="openOptionsModal('${prod.id}')" class="w-full sm:w-auto px-3 py-1.5 sm:px-4 sm:py-2 fuchsia-btn font-extrabold rounded-xl sm:rounded-2xl text-[11px] sm:text-xs shadow-md transition-all flex items-center justify-center space-x-1.5">
+                            <i class="fa-solid fa-bag-shopping text-[9px] sm:text-[10px]"></i>
                             <span>Ver Op.</span>
                         </button>
                     </div>
@@ -838,7 +929,6 @@
         }
 
         function openCheckoutFormModal() {
-            // Calcular el mayor tiempo de preparación de los productos en el carrito
             let maxPrepDays = 0;
             cart.forEach(item => {
                 const prod = rawProducts.find(p => p.id === item.productId);
@@ -847,7 +937,6 @@
                 }
             });
 
-            // Fecha mínima = hoy + maxPrepDays
             const minDate = new Date();
             minDate.setDate(minDate.getDate() + maxPrepDays);
             const minDateStr = minDate.toISOString().split('T')[0];
@@ -889,12 +978,11 @@
                 itemsText += ` | Subtotal: ${formatCOP(item.total)}`;
             });
 
-            const message = `HOLA, ME GUSTARIA AGENDAR ESTE PEDIDO\n\nREF DE PRODUCTO/S:${itemsText}\n\nDATOS DEL CLIENTE:\n• Nombre: ${nombre}\n• Teléfono: ${telefono}\n• Correo: ${correo}\n• Dirección: ${direccion}\n• Barrio: ${barrio}\n• Ciudad: ${ciudad}\n• Fecha de Entrega: ${formatDate(fechaEntrega)}\n\nTOTAL DEL PEDIDO: ${formatCOP(grandTotal)} (Anticipo sugerido: ${formatCOP(grandAnticipo)})\n\nNota: El asesor te dará el valor del domicilio/envío mediante WhatsApp.`;
+            const message = `HOLA, ME GUSTARIA AGENDAR ESTE PEDIDO\n\nREF DE PRODUCTO/S:${itemsText}\n\nDATOS DEL CLIENTE:\n• Nombre: ${nombre}\n• Teléfono: ${telefono}\n• Correo: ${correo}\n• Dirección: ${direccion}\n• Barrio: ${barrio}\n• Ciudad: ${ciudad}\n• Fecha de Entrega: ${formatDate(fechaEntrega)}\n\nTOTAL DEL PEDIDO: ${formatCOP(grandTotal)} (Anticipo sugerido: ${formatCOP(grandAnticipo)})\n\nPor favor me cotizas el valor del domicilio/envío.`;
 
             const encodedMessage = encodeURIComponent(message);
             const whatsappUrl = `https://wa.me/573147671380?text=${encodedMessage}`;
 
-            // Vaciar carrito
             cart = [];
             saveCart();
             closeCheckoutFormModal();
