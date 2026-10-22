@@ -140,12 +140,18 @@
                         <i class="fa-solid fa-user-gear fuchsia-text"></i>
                         <span>Panel de Administración de Créditos</span>
                     </h2>
-                    <p class="text-xs text-slate-400 mt-1">Gestión de cupo disponible, creación de clientes y deudas.</p>
+                    <p class="text-xs text-slate-400 mt-1">Gestión de cupo disponible, creación de clientes y deudas. (Automatización WhatsApp activa a las 2:00 PM).</p>
                 </div>
-                <button onclick="openNewClientModal()" class="px-5 py-3 fuchsia-btn rounded-2xl text-xs font-black shadow-md flex items-center space-x-2 self-start sm:self-center">
-                    <i class="fa-solid fa-user-plus"></i>
-                    <span>Registrar Nuevo Cliente</span>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button onclick="triggerManualWhatsAppCheck()" class="px-4 py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl text-xs font-black shadow-sm flex items-center space-x-1.5">
+                        <i class="fa-brands fa-whatsapp text-sm"></i>
+                        <span>Probar Alertas WhatsApp Hoy</span>
+                    </button>
+                    <button onclick="openNewClientModal()" class="px-5 py-3 fuchsia-btn rounded-2xl text-xs font-black shadow-md flex items-center space-x-2">
+                        <i class="fa-solid fa-user-plus"></i>
+                        <span>Registrar Nuevo Cliente</span>
+                    </button>
+                </div>
             </div>
 
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between">
@@ -250,14 +256,9 @@
                         <input type="tel" id="new-client-phone" required placeholder="3000000000" class="w-full border fuchsia-border rounded-xl px-3 py-2 font-bold">
                     </div>
                     <div>
-                        <label class="block font-bold text-slate-500 uppercase mb-1">CORREO (OPCIONAL)</label>
-                        <input type="email" id="new-client-email" placeholder="Opcional" class="w-full border border-slate-200 rounded-xl px-3 py-2">
+                        <label class="block font-bold text-slate-500 uppercase mb-1">CÉDULA (CONTRASEÑA) *</label>
+                        <input type="text" id="new-client-cedula" required placeholder="Número de cédula" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
                     </div>
-                </div>
-
-                <div>
-                    <label class="block font-bold text-slate-700 uppercase mb-1">CONTRASEÑA DE INGRESO *</label>
-                    <input type="password" id="new-client-password" required placeholder="••••••••" class="w-full border border-slate-200 rounded-xl px-3 py-2">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -272,14 +273,14 @@
                 </div>
 
                 <div>
-                    <label class="block font-bold fuchsia-text uppercase mb-1">FECHA DE INICIO DE CRÉDITO *</label>
-                    <input type="date" id="new-client-fecha-inicio" required onchange="calcPreviewNewClient()" class="w-full border fuchsia-border rounded-xl px-3 py-2 font-bold">
+                    <label class="block font-bold fuchsia-text uppercase mb-1">FECHA DE VENCIMIENTO DE CUOTA *</label>
+                    <input type="date" id="new-client-fecha-inicio" required class="w-full border fuchsia-border rounded-xl px-3 py-2 font-bold">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-bold text-slate-700 uppercase mb-1">FRECUENCIA</label>
-                        <select id="new-client-frecuencia" onchange="calcPreviewNewClient()" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
+                        <select id="new-client-frecuencia" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
                             <option value="Quincenal" selected>Quincenal</option>
                             <option value="Semanal">Semanal (+7 días)</option>
                             <option value="Diario">Diario (+1 día)</option>
@@ -288,14 +289,8 @@
                     </div>
                     <div>
                         <label class="block font-bold text-slate-700 uppercase mb-1">NÚMERO DE CUOTAS</label>
-                        <input type="number" id="new-client-cuotas" value="6" min="1" onchange="calcPreviewNewClient()" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
+                        <input type="number" id="new-client-cuotas" value="6" min="1" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
                     </div>
-                </div>
-
-                <div class="bg-pink-50 border border-pink-100 rounded-2xl p-3 text-[11px] space-y-1">
-                    <div>Cupo Disponible Inicial: <strong id="prev-cupo-disp" class="fuchsia-text">$ 200.000</strong></div>
-                    <div>Valor Cuota Base: <strong id="prev-cuota-val" class="fuchsia-text">$ 50.000</strong></div>
-                    <div id="prev-fechas" class="text-[10px] text-slate-500">Próximo Pago: Calculado automáticamente.</div>
                 </div>
 
                 <div class="flex items-center space-x-3 pt-3 border-t border-slate-100">
@@ -544,6 +539,7 @@
                 document.getElementById('admin-login-screen').classList.add('hidden');
                 fetchAdminData();
                 fetchProductsData();
+                iniciarRelojAutomationsWhatsApp();
             }
         };
 
@@ -575,6 +571,7 @@
                 document.getElementById('admin-login-screen').classList.add('hidden');
                 fetchAdminData();
                 fetchProductsData();
+                iniciarRelojAutomationsWhatsApp();
             } else {
                 document.getElementById('admin-login-error').classList.remove('hidden');
             }
@@ -636,17 +633,16 @@
             e.preventDefault();
             const nombre = document.getElementById('new-client-name').value;
             const telefono = document.getElementById('new-client-phone').value;
-            const correo = document.getElementById('new-client-email').value;
-            const password = document.getElementById('new-client-password').value;
+            const cedula = document.getElementById('new-client-cedula').value;
             const cupoTotal = parseFloat(document.getElementById('new-client-cupo').value) || 0;
             const deudaInicial = parseFloat(document.getElementById('new-client-deuda').value) || 0;
-            const fechaInicio = document.getElementById('new-client-fecha-inicio').value;
+            const fechaVencimiento = document.getElementById('new-client-fecha-inicio').value;
             const frecuencia = document.getElementById('new-client-frecuencia').value;
             const cuotas = parseInt(document.getElementById('new-client-cuotas').value) || 1;
 
             const { data: newClient, error } = await supabaseClient
                 .from('clientes')
-                .insert([{ nombre, telefono, correo, password, cupo_total: cupoTotal, cupo_disponible: cupoTotal - deudaInicial }])
+                .insert([{ nombre, telefono, password: cedula, cupo_total: cupoTotal, cupo_disponible: cupoTotal - deudaInicial }])
                 .select().single();
 
             if (error) {
@@ -662,7 +658,7 @@
                     frecuencia,
                     numero_cuotas: cuotas,
                     valor_cuota: Math.ceil(deudaInicial / cuotas),
-                    proximo_vencimiento: fechaInicio,
+                    proximo_vencimiento: fechaVencimiento,
                     estado: 'ACTIVO'
                 }]);
             }
@@ -703,13 +699,24 @@
                 card.className = "bg-white p-4 rounded-2xl border border-slate-200 space-y-2 text-xs";
                 card.innerHTML = `
                     <div class="flex justify-between font-bold">
-                        <span>Deuda #${idx+1} (${formatCOP(cred.monto_total)})</span>
+                        <span>Deuda #${idx+1} (${formatCOP(cred.monto_total)}) - Estado: <strong class="${cred.estado === 'ACTIVO' ? 'text-pink-600' : 'text-emerald-600'}">${cred.estado}</strong></span>
                         <span class="fuchsia-text">${formatCOP(cred.deuda_actual)}</span>
                     </div>
-                    <div class="text-[11px] text-slate-500">Próximo vencimiento: ${cred.proximo_vencimiento}</div>
+                    <div class="text-[11px] text-slate-500 flex justify-between items-center">
+                        <span>Vencimiento: ${cred.proximo_vencimiento}</span>
+                        ${cred.estado === 'ACTIVO' ? `<button onclick="marcarDeudaComoPaga('${cred.id}')" class="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold">Marcar como Paga ✓</button>` : ''}
+                    </div>
                 `;
                 container.appendChild(card);
             });
+        }
+
+        async function marcarDeudaComoPaga(creditoId) {
+            if (!confirm('¿Estás seguro de marcar esta cuota/deuda como PAGA? Esto evitará que se envíen recordatorios.')) return;
+            await supabaseClient.from('creditos').update({ estado: 'PAGADO', deuda_actual: 0 }).eq('id', creditoId);
+            fetchAdminData();
+            closeEditModal();
+            alert('¡Deuda marcada como pagada con éxito!');
         }
 
         async function saveClientChanges() {
@@ -735,6 +742,7 @@
             const monto = parseFloat(prompt('Monto de la nueva deuda ($):'));
             if (!monto) return;
             const cuotas = parseInt(prompt('Número de cuotas:', '4')) || 4;
+            const fechaVenc = prompt('Fecha de vencimiento (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
 
             await supabaseClient.from('creditos').insert([{
                 cliente_id: clientId,
@@ -743,11 +751,96 @@
                 frecuencia: 'Quincenal',
                 numero_cuotas: cuotas,
                 valor_cuota: Math.ceil(monto / cuotas),
-                proximo_vencimiento: new Date().toISOString().split('T')[0],
+                proximo_vencimiento: fechaVenc,
                 estado: 'ACTIVO'
             }]);
             fetchAdminData();
             closeEditModal();
+        }
+
+        // ==================== AUTOMATIZACIÓN WHATSAPP CRÉDITOS (2:00 PM) ====================
+        function iniciarRelojAutomationsWhatsApp() {
+            // Verificar cada 60 segundos si son las 2:00 PM (14:00) y si no se ha enviado hoy
+            setInterval(() => {
+                const ahora = new Date();
+                const hora = ahora.getHours();
+                const minuto = ahora.getMinutes();
+                const hoyStr = ahora.toISOString().split('T')[0];
+
+                const ultimoEnvio = localStorage.getItem('cupissa_last_whatsapp_cron');
+
+                if (hora === 14 && minuto === 0 && ultimoEnvio !== hoyStr) {
+                    ejecutarEnvioAutomaticoWhatsApp();
+                    localStorage.setItem('cupissa_last_whatsapp_cron', hoyStr);
+                }
+            }, 60000);
+        }
+
+        function triggerManualWhatsAppCheck() {
+            ejecutarEnvioAutomaticoWhatsApp(true);
+        }
+
+        async function ejecutarEnvioAutomaticoWhatsApp(isManual = false) {
+            await fetchAdminData(); // Refrescar data de clientes y créditos
+
+            const hoy = new Date();
+            const yyyy = hoy.getFullYear();
+            const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+            const dd = String(hoy.getDate()).padStart(2, '0');
+            const fechaHoyStr = `${yyyy}-${mm}-${dd}`;
+
+            // Calcular fecha de mañana
+            const manana = new Date(hoy);
+            manana.setDate(manana.getDate() + 1);
+            const myyyy = manana.getFullYear();
+            const mmm = String(manana.getMonth() + 1).padStart(2, '0');
+            const mdd = String(manana.getDate()).padStart(2, '0');
+            const fechaMananaStr = `${myyyy}-${mmm}-${mdd}`;
+
+            let mensajesEnviadosCount = 0;
+
+            allClients.forEach(client => {
+                if (!client.creditos || client.creditos.length === 0) return;
+
+                client.creditos.forEach(cred => {
+                    // Condición 1: Solo si la deuda está ACTIVA (si ya está paga, NO se envía)
+                    if (cred.estado !== 'ACTIVO') return;
+
+                    let tipoMensaje = null;
+                    if (cred.proximo_vencimiento === fechaMananaStr) {
+                        tipoMensaje = 'MAÑANA';
+                    } else if (cred.proximo_vencimiento === fechaHoyStr) {
+                        tipoMensaje = 'HOY';
+                    }
+
+                    if (tipoMensaje) {
+                        mensajesEnviadosCount++;
+                        enviarMensajeWhatsAppCredito(client, tipoMensaje);
+                    }
+                });
+            });
+
+            if (isManual) {
+                alert(`Revisión completada. Se dispararon ${mensajesEnviadosCount} recordatorios de WhatsApp para cuotas que vencen hoy o mañana.`);
+            }
+        }
+
+        function enviarMensajeWhatsAppCredito(client, cuando) {
+            const telefono = client.telefono;
+            const cedula = client.password || 'Tu cédula';
+
+            let textoMensaje = "";
+
+            if (cuando === 'MAÑANA') {
+                textoMensaje = `¡Hola! 👋😊 Esperamos que te encuentres muy bien.\n\nTe recordamos cordialmente que mañana tienes el pago de tu cuota de crédito CUPISSA. 💳📅\nPara realizar tu pago, ten presente los siguientes datos de ingreso: \n📱 Usuario: ${telefono} \n🔐 Contraseña: ${cedula}\n\n🔗 Link de pago: https://daviddeiner.github.io/CUPISSA/\n\nTe invitamos a realizar tu pago puntualmente para mantener tu crédito al día. Agradecemos mucho tu confianza y preferencia. 💙\n¡Que tengas un excelente día! 🌟 Equipo CUPISSA`;
+            } else if (cuando === 'HOY') {
+                textoMensaje = `¡Hola! 👋😊 Esperamos que te encuentres muy bien.\n\nTe recordamos cordialmente que HOY tienes el pago de tu cuota de crédito CUPISSA. 💳📅\nPara realizar tu pago, ten presente los siguientes datos de ingreso: \n📱 Usuario: ${telefono} \n🔐 Contraseña: ${cedula}\n\n🔗 Link de pago: https://daviddeiner.github.io/CUPISSA/\n\nTe invitamos a realizar tu pago puntualmente para mantener tu crédito al día. Agradecemos mucho tu confianza y preferencia. 💙\n¡Que tengas un excelente día! 🌟 Equipo CUPISSA`;
+            }
+
+            const urlWhatsApp = `https://wa.me/57${telefono}?text=${encodeURIComponent(textoMensaje)}`;
+            
+            // Abre una pestaña o ventana flotante de WhatsApp Web / App para enviar el mensaje automático
+            window.open(urlWhatsApp, '_blank');
         }
 
         // ==================== PRODUCTOS Y RECORTADOR DE IMAGEN ====================
@@ -863,14 +956,12 @@
                 const reader = new FileReader();
                 reader.onload = function(evt) {
                     pendingImageQueue.push(evt.target.result);
-                    // Si es la primera, arrancamos el proceso de recorte secuencial
                     if (pendingImageQueue.length === 1 && !currentCropper) {
                         startNextCrop();
                     }
                 };
                 reader.readAsDataURL(file);
             });
-            // Limpiamos el input para permitir re-selección
             e.target.value = '';
         }
 
@@ -888,7 +979,6 @@
                 currentCropper.destroy();
             }
 
-            // Inicializar Cropper en formato 1:1 (Cuadrado perfecto para catálogo)
             currentCropper = new Cropper(imgElement, {
                 aspectRatio: 1,
                 viewMode: 2,
@@ -900,7 +990,6 @@
         function confirmCropPhoto() {
             if (!currentCropper) return;
 
-            // Obtener recorte canvas en 600x600 px (óptimo web)
             const canvas = currentCropper.croppedCanvas || currentCropper.getCroppedCanvas({
                 width: 600,
                 height: 600
@@ -912,7 +1001,6 @@
                 renderPreviewPhotos();
             }
 
-            // Quitar el elemento actual de la cola
             pendingImageQueue.shift();
             closeCropperModal();
 
@@ -923,7 +1011,6 @@
 
         function skipCurrentPhotoCrop() {
             if (pendingImageQueue.length > 0) {
-                // Guardar sin recortar (imagen original)
                 tempBase64Photos.push(pendingImageQueue[0]);
                 renderPreviewPhotos();
                 pendingImageQueue.shift();
