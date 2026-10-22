@@ -37,8 +37,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
+    <!-- Supabase JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="wompi-service.js"></script>
+    
+    <!-- Cropper.js (Librería de Recorte de Imagen) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
     <style>
         .fuchsia-btn { background-color: #db2777; color: white; }
@@ -477,11 +481,12 @@
                     <div id="list-colores-tags" class="flex flex-wrap gap-2 pt-1"></div>
                 </div>
 
-                <!-- CARGA DE FOTOS -->
+                <!-- CARGA DE FOTOS CON RECORTADOR INTEGRADO -->
                 <div class="border border-slate-200 rounded-2xl p-4 space-y-3 bg-white">
-                    <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Un único producto con múltiples fotos)</label>
-                    <input type="file" id="prod-files-input" multiple accept="image/*" onchange="previewSelectedFiles(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
-                    <div id="files-preview-container" class="flex flex-wrap gap-2 pt-2"></div>
+                    <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Recórtalas para el catálogo)</label>
+                    <input type="file" id="prod-files-input" multiple accept="image/*" onchange="handleImageFilesSelected(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
+                    <p class="text-[11px] text-slate-400">Puedes subir varias fotos. Se abrirá un asistente para recortar cada una exactamente a formato cuadrado (ideal para la vitrina).</p>
+                    <div id="files-preview-container" class="flex flex-wrap gap-3 pt-2"></div>
                 </div>
 
                 <div class="flex items-center space-x-3 pt-3 border-t border-slate-100">
@@ -490,6 +495,31 @@
                 </div>
 
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: RECORTADOR DE IMAGEN (CROPPER.JS) -->
+    <div id="modal-cropper" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[60] flex items-center justify-center hidden p-4">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-black text-slate-900 text-sm uppercase flex items-center space-x-2">
+                    <i class="fa-solid fa-crop fuchsia-text"></i>
+                    <span>Recortar Foto para el Catálogo</span>
+                </h3>
+                <span id="cropper-counter" class="text-xs font-bold fuchsia-text">Foto 1 de 1</span>
+            </div>
+
+            <div class="max-h-[60vh] overflow-hidden bg-slate-900 rounded-2xl flex items-center justify-center">
+                <img id="image-to-crop" src="" alt="Para recortar" class="max-h-[50vh] block max-w-full">
+            </div>
+
+            <div class="flex justify-between items-center pt-2">
+                <button type="button" onclick="skipCurrentPhotoCrop()" class="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl text-xs">Omitir recorte</button>
+                <button type="button" onclick="confirmCropPhoto()" class="px-6 py-2.5 fuchsia-btn font-black rounded-xl text-xs shadow-md flex items-center space-x-2">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Confirmar y Agregar Recorte</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -503,6 +533,10 @@
         let tempTallas = [];
         let tempColores = [];
         let tempBase64Photos = [];
+
+        // Variables de cola para recorte secuencial
+        let pendingImageQueue = [];
+        let currentCropper = null;
 
         window.onload = function() {
             const adminAuth = localStorage.getItem('cupissa_admin_logged');
@@ -716,7 +750,7 @@
             closeEditModal();
         }
 
-        // ==================== PRODUCTOS ====================
+        // ==================== PRODUCTOS Y RECORTADOR DE IMAGEN ====================
         async function fetchProductsData() {
             try {
                 const { data } = await supabaseClient.from('productos').select('*');
@@ -758,9 +792,11 @@
             tempTallas = [];
             tempColores = [];
             tempBase64Photos = [];
+            pendingImageQueue = [];
             renderTallasTags();
             renderColoresTags();
-            document.getElementById('files-preview-container').innerHTML = '';
+            renderPreviewPhotos();
+            document.getElementById('prod-files-input').value = '';
             document.getElementById('modal-product-form').classList.remove('hidden');
         }
 
@@ -817,24 +853,113 @@
             });
         }
 
-        function previewSelectedFiles(e) {
+        // --- MANEJO Y RECORTADOR DE IMÁGENES ---
+        function handleImageFilesSelected(e) {
             const files = e.target.files;
-            const container = document.getElementById('files-preview-container');
-            container.innerHTML = '';
-            tempBase64Photos = [];
+            if (!files || files.length === 0) return;
 
+            pendingImageQueue = [];
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(evt) {
-                    const base64 = evt.target.result;
-                    tempBase64Photos.push(base64);
-                    const img = document.createElement('img');
-                    img.src = base64;
-                    img.className = "w-14 h-14 object-cover rounded-xl border";
-                    container.appendChild(img);
+                    pendingImageQueue.push(evt.target.result);
+                    // Si es la primera, arrancamos el proceso de recorte secuencial
+                    if (pendingImageQueue.length === 1 && !currentCropper) {
+                        startNextCrop();
+                    }
                 };
                 reader.readAsDataURL(file);
             });
+            // Limpiamos el input para permitir re-selección
+            e.target.value = '';
+        }
+
+        function startNextCrop() {
+            if (pendingImageQueue.length === 0) return;
+            const imgData = pendingImageQueue[0];
+            
+            document.getElementById('cropper-counter').innerText = `Recortando foto (Faltan ${pendingImageQueue.length})`;
+            const imgElement = document.getElementById('image-to-crop');
+            imgElement.src = imgData;
+
+            document.getElementById('modal-cropper').classList.remove('hidden');
+
+            if (currentCropper) {
+                currentCropper.destroy();
+            }
+
+            // Inicializar Cropper en formato 1:1 (Cuadrado perfecto para catálogo)
+            currentCropper = new Cropper(imgElement, {
+                aspectRatio: 1,
+                viewMode: 2,
+                autoCropArea: 0.9,
+                responsive: true,
+            });
+        }
+
+        function confirmCropPhoto() {
+            if (!currentCropper) return;
+
+            // Obtener recorte canvas en 600x600 px (óptimo web)
+            const canvas = currentCropper.croppedCanvas || currentCropper.getCroppedCanvas({
+                width: 600,
+                height: 600
+            });
+
+            if (canvas) {
+                const croppedBase64 = canvas.toDataURL('image/jpeg', 0.9);
+                tempBase64Photos.push(croppedBase64);
+                renderPreviewPhotos();
+            }
+
+            // Quitar el elemento actual de la cola
+            pendingImageQueue.shift();
+            closeCropperModal();
+
+            if (pendingImageQueue.length > 0) {
+                setTimeout(startNextCrop, 300);
+            }
+        }
+
+        function skipCurrentPhotoCrop() {
+            if (pendingImageQueue.length > 0) {
+                // Guardar sin recortar (imagen original)
+                tempBase64Photos.push(pendingImageQueue[0]);
+                renderPreviewPhotos();
+                pendingImageQueue.shift();
+            }
+            closeCropperModal();
+
+            if (pendingImageQueue.length > 0) {
+                setTimeout(startNextCrop, 300);
+            }
+        }
+
+        function closeCropperModal() {
+            if (currentCropper) {
+                currentCropper.destroy();
+                currentCropper = null;
+            }
+            document.getElementById('modal-cropper').classList.add('hidden');
+        }
+
+        function renderPreviewPhotos() {
+            const container = document.getElementById('files-preview-container');
+            container.innerHTML = '';
+            tempBase64Photos.forEach((src, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = "relative group";
+                wrapper.innerHTML = `
+                    <img src="${src}" class="w-16 h-16 object-cover rounded-2xl border-2 fuchsia-border shadow-sm">
+                    <button type="button" onclick="removeTempPhoto(${idx})" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-md hover:bg-red-700">×</button>
+                `;
+                container.appendChild(wrapper);
+            });
+        }
+
+        function removeTempPhoto(index) {
+            tempBase64Photos.splice(index, 1);
+            renderPreviewPhotos();
         }
 
         async function handleSaveProduct(e) {
@@ -873,7 +998,7 @@
 
             closeProductModal();
             fetchProductsData();
-            alert('¡Producto creado exitosamente!');
+            alert('¡Producto creado con fotos recortadas exitosamente!');
         }
 
         async function deleteProduct(prodId) {
