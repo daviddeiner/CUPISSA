@@ -379,6 +379,12 @@
                     </div>
                 </div>
 
+                <!-- DESCRIPCIÓN DEL PRODUCTO -->
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Descripción del Producto (Visible en Ver Op.)</label>
+                    <textarea id="prod-descripcion" rows="3" placeholder="Ingresa los detalles, materiales, cuidados o información importante del producto..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-xs"></textarea>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
                         <label class="block font-bold text-slate-700 uppercase mb-1">Categoría *</label>
@@ -472,11 +478,11 @@
                     <div id="list-colores-tags" class="flex flex-wrap gap-2 pt-1"></div>
                 </div>
 
-                <!-- CARGA DE FOTOS CON RECORTADOR INTEGRADO -->
+                <!-- CARGA DE FOTOS CON RECORTADOR INTEGRADO Y SOPORTE DE FOTO COMPLETA -->
                 <div class="border border-slate-200 rounded-2xl p-4 space-y-3 bg-white">
                     <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Recórtalas para el catálogo)</label>
                     <input type="file" id="prod-files-input" multiple accept="image/*" onchange="handleImageFilesSelected(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
-                    <p class="text-[11px] text-slate-400">Puedes subir varias fotos. Se abrirá un asistente para recortar cada una exactamente a formato cuadrado (ideal para la vitrina).</p>
+                    <p class="text-[11px] text-slate-400">Puedes subir varias fotos. Se recortarán para la vitrina y se guardará la versión completa para el botón de "Ver foto completa".</p>
                     <div id="files-preview-container" class="flex flex-wrap gap-3 pt-2"></div>
                 </div>
 
@@ -524,6 +530,7 @@
         let tempTallas = [];
         let tempColores = [];
         let tempBase64Photos = [];
+        let tempOriginalPhotos = [];
 
         // Variables de cola para recorte secuencial
         let pendingImageQueue = [];
@@ -884,7 +891,9 @@
             tempTallas = [];
             tempColores = [];
             tempBase64Photos = [];
+            tempOriginalPhotos = [];
             pendingImageQueue = [];
+            document.getElementById('prod-descripcion').value = '';
             renderTallasTags();
             renderColoresTags();
             renderPreviewPhotos();
@@ -954,7 +963,8 @@
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(evt) {
-                    pendingImageQueue.push(evt.target.result);
+                    const originalBase64 = evt.target.result;
+                    pendingImageQueue.push({ original: originalBase64 });
                     if (pendingImageQueue.length === 1 && !currentCropper) {
                         startNextCrop();
                     }
@@ -966,11 +976,11 @@
 
         function startNextCrop() {
             if (pendingImageQueue.length === 0) return;
-            const imgData = pendingImageQueue[0];
+            const item = pendingImageQueue[0];
             
             document.getElementById('cropper-counter').innerText = `Recortando foto (Faltan ${pendingImageQueue.length})`;
             const imgElement = document.getElementById('image-to-crop');
-            imgElement.src = imgData;
+            imgElement.src = item.original;
 
             document.getElementById('modal-cropper').classList.remove('hidden');
 
@@ -990,13 +1000,14 @@
             if (!currentCropper) return;
 
             const canvas = currentCropper.croppedCanvas || currentCropper.getCroppedCanvas({
-                width: 600,
-                height: 600
+                width: 800,
+                height: 800
             });
 
             if (canvas) {
                 const croppedBase64 = canvas.toDataURL('image/jpeg', 0.9);
                 tempBase64Photos.push(croppedBase64);
+                tempOriginalPhotos.push(pendingImageQueue[0].original);
                 renderPreviewPhotos();
             }
 
@@ -1010,7 +1021,8 @@
 
         function skipCurrentPhotoCrop() {
             if (pendingImageQueue.length > 0) {
-                tempBase64Photos.push(pendingImageQueue[0]);
+                tempBase64Photos.push(pendingImageQueue[0].original);
+                tempOriginalPhotos.push(pendingImageQueue[0].original);
                 renderPreviewPhotos();
                 pendingImageQueue.shift();
             }
@@ -1045,6 +1057,7 @@
 
         function removeTempPhoto(index) {
             tempBase64Photos.splice(index, 1);
+            tempOriginalPhotos.splice(index, 1);
             renderPreviewPhotos();
         }
 
@@ -1052,6 +1065,7 @@
             e.preventDefault();
             const productData = {
                 nombre: document.getElementById('prod-nombre').value.trim(),
+                descripcion: document.getElementById('prod-descripcion').value.trim(),
                 mundo: document.getElementById('prod-mundo').value.trim().toUpperCase(),
                 categoria: document.getElementById('prod-categoria').value.trim(),
                 subcategoria: document.getElementById('prod-subcategoria').value.trim(),
@@ -1070,7 +1084,8 @@
                 valor_deposito: parseFloat(document.getElementById('prod-valor-deposito').value) || 0,
                 tallas: tempTallas,
                 colores: tempColores,
-                fotos: tempBase64Photos.length > 0 ? tempBase64Photos : ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop']
+                fotos: tempBase64Photos.length > 0 ? tempBase64Photos : ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop'],
+                fotos_originales: tempOriginalPhotos.length > 0 ? tempOriginalPhotos : (tempBase64Photos.length > 0 ? tempBase64Photos : ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop'])
             };
 
             try {
@@ -1084,7 +1099,7 @@
 
             closeProductModal();
             fetchProductsData();
-            alert('¡Producto creado con fotos recortadas exitosamente!');
+            alert('¡Producto creado con descripción y fotos guardadas exitosamente!');
         }
 
         async function deleteProduct(prodId) {
