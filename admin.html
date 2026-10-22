@@ -41,6 +41,8 @@
     
     <!-- Supabase JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Servicio Independiente Wompi y Cálculos -->
+    <script src="wompi-service.js"></script>
 
     <style>
         .fuchsia-btn { background-color: #db2777; color: white; }
@@ -54,7 +56,7 @@
 </head>
 <body class="h-full flex flex-col bg-slate-50 text-slate-800 font-sans">
 
-    <!-- HEADER: ÚNICAMENTE LOGO.PNG -->
+    <!-- HEADER: LOGO -->
     <header class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
@@ -176,7 +178,7 @@
                     <div>
                         <label class="block font-bold text-slate-700 uppercase mb-1">FRECUENCIA</label>
                         <select id="new-client-frecuencia" onchange="calcPreviewNewClient()" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-bold">
-                            <option value="Quincenal" selected>Quincenal (+15 días)</option>
+                            <option value="Quincenal" selected>Quincenal (Días 15 y 30/31)</option>
                             <option value="Semanal">Semanal (+7 días)</option>
                             <option value="Diario">Diario (+1 día)</option>
                             <option value="Mensual">Mensual (+1 mes)</option>
@@ -365,22 +367,6 @@
             }
         }
 
-        // LÓGICA DE FRECUENCIAS: QUINCENAL SUMA 15 DÍAS DESDE CUALQUIER FECHA INICIAL
-        function calculateNextDueDate(startDateStr, frequency) {
-            let d = new Date(startDateStr + 'T00:00:00');
-            
-            if (frequency === 'Diario') {
-                d.setDate(d.getDate() + 1);
-            } else if (frequency === 'Semanal') {
-                d.setDate(d.getDate() + 7);
-            } else if (frequency === 'Quincenal') {
-                d.setDate(d.getDate() + 15);
-            } else if (frequency === 'Mensual') {
-                d.setMonth(d.getMonth() + 1);
-            }
-            return d.toISOString().split('T')[0];
-        }
-
         async function handleCreateNewClient(e) {
             e.preventDefault();
             const nombre = document.getElementById('new-client-name').value;
@@ -547,7 +533,7 @@
 
             fetchAdminData();
             closeEditModal();
-            alert('¡Nueva deuda agregada y combinada exitosamente!');
+            alert('¡Nueva deuda agregada exitosamente!');
         }
 
         function formatCOP(val) {
