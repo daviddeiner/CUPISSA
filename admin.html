@@ -351,7 +351,7 @@
         </div>
     </div>
 
-    <!-- MODAL 3: CREAR PRODUCTO -->
+    <!-- MODAL 3: CREAR / EDITAR PRODUCTO -->
     <div id="modal-product-form" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-3xl max-w-4xl w-full p-6 sm:p-8 shadow-2xl border border-slate-100 space-y-6 max-h-[92vh] overflow-y-auto custom-scrollbar relative">
             
@@ -360,13 +360,14 @@
             </button>
 
             <div class="border-b border-slate-100 pb-4">
-                <h3 class="text-xl font-black text-pink-600 flex items-center space-x-2">
+                <h3 id="product-modal-title" class="text-xl font-black text-pink-600 flex items-center space-x-2">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
                     <span>Configuración Inteligente de Producto Web</span>
                 </h3>
             </div>
 
             <form onsubmit="handleSaveProduct(event)" class="space-y-5 text-xs">
+                <input type="hidden" id="prod-edit-id">
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
@@ -482,7 +483,7 @@
                 <div class="border border-slate-200 rounded-2xl p-4 space-y-3 bg-white">
                     <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Recórtalas para el catálogo)</label>
                     <input type="file" id="prod-files-input" multiple accept="image/*" onchange="handleImageFilesSelected(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
-                    <p class="text-[11px] text-slate-400">Puedes subir varias fotos. Se recortarán para la vitrina y se guardará la versión completa para el botón de "Ver foto completa".</p>
+                    <p class="text-[11px] text-slate-400">Puedes subir nuevas fotos. Se recortarán para la vitrina y se guardará la versión completa para el botón de "Ver foto completa".</p>
                     <div id="files-preview-container" class="flex flex-wrap gap-3 pt-2"></div>
                 </div>
 
@@ -879,8 +880,9 @@
                     <td class="p-3 font-black">${formatCOP(p.precio_detal)}</td>
                     <td class="p-3">${formatCOP(p.precio_mayorista)}</td>
                     <td class="p-3 font-bold fuchsia-text">${p.porcentaje_anticipo}%</td>
-                    <td class="p-3 text-center">
-                        <button onclick="deleteProduct('${p.id}')" class="p-2 bg-red-50 text-red-600 rounded-xl font-bold"><i class="fa-solid fa-trash"></i></button>
+                    <td class="p-3 text-center space-x-1">
+                        <button onclick="openEditProductModal('${p.id}')" class="p-2 bg-pink-50 fuchsia-text rounded-xl font-bold hover:bg-pink-100 transition-colors" title="Editar Producto"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteProduct('${p.id}')" class="p-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors" title="Eliminar Producto"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -888,12 +890,74 @@
         }
 
         function openProductModal() {
+            document.getElementById('prod-edit-id').value = '';
+            document.getElementById('product-modal-title').innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i><span>Configuración Inteligente de Producto Web</span>`;
             tempTallas = [];
             tempColores = [];
             tempBase64Photos = [];
             tempOriginalPhotos = [];
             pendingImageQueue = [];
+            document.getElementById('prod-nombre').value = '';
             document.getElementById('prod-descripcion').value = '';
+            document.getElementById('prod-mundo').value = '';
+            document.getElementById('prod-categoria').value = '';
+            document.getElementById('prod-subcategoria').value = '';
+            document.getElementById('prod-temporada').value = '';
+            document.getElementById('prod-precio-detal').value = '0';
+            document.getElementById('prod-precio-mayorista').value = '0';
+            document.getElementById('prod-cant-min-mayorista').value = '6';
+            document.getElementById('prod-porcentaje-anticipo').value = '20';
+            document.getElementById('prod-dias-preparacion').value = '0';
+            document.getElementById('chk-personalizable').checked = false;
+            document.getElementById('chk-al-por-mayor').checked = true;
+            document.getElementById('chk-venta').checked = true;
+            document.getElementById('chk-alquiler').checked = false;
+            document.getElementById('chk-credito').checked = false;
+            document.getElementById('prod-precio-alquiler').value = '0';
+            document.getElementById('prod-valor-deposito').value = '0';
+            toggleAlquilerFields();
+            renderTallasTags();
+            renderColoresTags();
+            renderPreviewPhotos();
+            document.getElementById('prod-files-input').value = '';
+            document.getElementById('modal-product-form').classList.remove('hidden');
+        }
+
+        function openEditProductModal(prodId) {
+            const prod = allProducts.find(p => p.id == prodId);
+            if (!prod) return;
+
+            document.getElementById('prod-edit-id').value = prod.id;
+            document.getElementById('product-modal-title').innerHTML = `<i class="fa-solid fa-pen-to-square"></i><span>Editar Producto: ${prod.nombre}</span>`;
+            
+            document.getElementById('prod-nombre').value = prod.nombre || '';
+            document.getElementById('prod-descripcion').value = prod.descripcion || '';
+            document.getElementById('prod-mundo').value = prod.mundo || '';
+            document.getElementById('prod-categoria').value = prod.categoria || '';
+            document.getElementById('prod-subcategoria').value = prod.subcategoria || '';
+            document.getElementById('prod-temporada').value = prod.temporada || '';
+            document.getElementById('prod-precio-detal').value = prod.precio_detal || 0;
+            document.getElementById('prod-precio-mayorista').value = prod.precio_mayorista || 0;
+            document.getElementById('prod-cant-min-mayorista').value = prod.cant_min_mayorista || 6;
+            document.getElementById('prod-porcentaje-anticipo').value = prod.porcentaje_anticipo || 20;
+            document.getElementById('prod-dias-preparacion').value = prod.dias_preparacion || 0;
+
+            document.getElementById('chk-personalizable').checked = !!prod.personalizable;
+            document.getElementById('chk-al-por-mayor').checked = !!prod.al_por_mayor;
+            document.getElementById('chk-venta').checked = !!prod.venta;
+            document.getElementById('chk-alquiler').checked = !!prod.alquiler;
+            document.getElementById('chk-credito').checked = !!prod.credito;
+
+            document.getElementById('prod-precio-alquiler').value = prod.precio_alquiler || 0;
+            document.getElementById('prod-valor-deposito').value = prod.valor_deposito || 0;
+            toggleAlquilerFields();
+
+            tempTallas = prod.tallas ? [...prod.tallas] : [];
+            tempColores = prod.colores ? [...prod.colores] : [];
+            tempBase64Photos = prod.fotos ? [...prod.fotos] : [];
+            tempOriginalPhotos = prod.fotos_originales ? [...prod.fotos_originales] : [...tempBase64Photos];
+            pendingImageQueue = [];
+
             renderTallasTags();
             renderColoresTags();
             renderPreviewPhotos();
@@ -1063,6 +1127,8 @@
 
         async function handleSaveProduct(e) {
             e.preventDefault();
+            const editId = document.getElementById('prod-edit-id').value;
+
             const productData = {
                 nombre: document.getElementById('prod-nombre').value.trim(),
                 descripcion: document.getElementById('prod-descripcion').value.trim(),
@@ -1089,17 +1155,30 @@
             };
 
             try {
-                const { error } = await supabaseClient.from('productos').insert([productData]);
-                if (error) throw error;
+                if (editId) {
+                    const { error } = await supabaseClient.from('productos').update(productData).eq('id', editId);
+                    if (error) throw error;
+                } else {
+                    const { error } = await supabaseClient.from('productos').insert([productData]);
+                    if (error) throw error;
+                }
             } catch (err) {
-                productData.id = 'loc_' + Date.now();
-                allProducts.push(productData);
+                if (editId) {
+                    const idx = allProducts.findIndex(p => p.id == editId);
+                    if (idx >= 0) {
+                        productData.id = editId;
+                        allProducts[idx] = productData;
+                    }
+                } else {
+                    productData.id = 'loc_' + Date.now();
+                    allProducts.push(productData);
+                }
                 localStorage.setItem('cupissa_local_products', JSON.stringify(allProducts));
             }
 
             closeProductModal();
             fetchProductsData();
-            alert('¡Producto creado con descripción y fotos guardadas exitosamente!');
+            alert(editId ? '¡Producto actualizado exitosamente!' : '¡Producto creado exitosamente!');
         }
 
         async function deleteProduct(prodId) {
@@ -1107,7 +1186,7 @@
             try {
                 await supabaseClient.from('productos').delete().eq('id', prodId);
             } catch (e) {
-                allProducts = allProducts.filter(p => p.id !== prodId);
+                allProducts = allProducts.filter(p => p.id != prodId);
                 localStorage.setItem('cupissa_local_products', JSON.stringify(allProducts));
             }
             fetchProductsData();
