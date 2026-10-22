@@ -214,6 +214,22 @@
         let minAmountWithMora = 0;
         let totalAmount = 0;
 
+        // PERSISTENCIA DE SESIÓN AL CARGAR LA PÁGINA
+        window.onload = async function() {
+            const savedSession = localStorage.getItem('cupissa_client_session');
+            if (savedSession) {
+                try {
+                    currentClient = JSON.parse(savedSession);
+                    document.getElementById('client-login-card').classList.add('hidden');
+                    document.getElementById('client-dashboard').classList.remove('hidden');
+                    await loadClientDashboard();
+                } catch (e) {
+                    console.error("Error al restaurar sesión:", e);
+                    localStorage.removeItem('cupissa_client_session');
+                }
+            }
+        };
+
         async function handleClientLogin(e) {
             e.preventDefault();
             const phone = document.getElementById('login-phone').value.trim();
@@ -233,6 +249,9 @@
             }
 
             currentClient = data;
+            // Guardar sesión en localStorage para persistencia al recargar
+            localStorage.setItem('cupissa_client_session', JSON.stringify(data));
+
             errorDiv.classList.add('hidden');
             document.getElementById('client-login-card').classList.add('hidden');
             document.getElementById('client-dashboard').classList.remove('hidden');
@@ -248,7 +267,10 @@
                 .eq('id', currentClient.id)
                 .single();
             
-            if (updatedClient) currentClient = updatedClient;
+            if (updatedClient) {
+                currentClient = updatedClient;
+                localStorage.setItem('cupissa_client_session', JSON.stringify(updatedClient));
+            }
 
             document.getElementById('client-name').innerText = `Hola, ${currentClient.nombre}`;
             document.getElementById('client-phone').innerHTML = `<i class="fa-solid fa-phone text-[10px] mr-1"></i>${currentClient.telefono}`;
@@ -349,6 +371,7 @@
         function handleLogout() {
             currentClient = null;
             activeCredits = [];
+            localStorage.removeItem('cupissa_client_session');
             document.getElementById('client-dashboard').classList.add('hidden');
             document.getElementById('client-login-card').classList.remove('hidden');
             document.getElementById('client-login-form').reset();
