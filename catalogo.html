@@ -433,7 +433,7 @@
 
                 <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl text-[11px] font-bold text-amber-800 flex items-start space-x-2">
                     <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
-                    <span>Por favor me cotizas el valor del domicilio/envío.</span>
+                    <span>Un asesor te dará el costo del domicilio/envío vía WhatsApp.</span>
                 </div>
 
                 <div class="pt-2 border-t border-slate-100 flex space-x-2">
@@ -977,22 +977,22 @@
         }
 
         function openCheckoutFormModal() {
-            let maxPrepDays = 0;
+            let totalPrepDays = 0;
             cart.forEach(item => {
                 const prod = rawProducts.find(p => p.id === item.productId);
-                if (prod && prod.dias_preparacion > maxPrepDays) {
-                    maxPrepDays = Number(prod.dias_preparacion);
+                if (prod && prod.dias_preparacion) {
+                    totalPrepDays += Number(prod.dias_preparacion) * Number(item.cantidad || 1);
                 }
             });
 
             const minDate = new Date();
-            minDate.setDate(minDate.getDate() + maxPrepDays);
+            minDate.setDate(minDate.getDate() + totalPrepDays);
             const minDateStr = minDate.toISOString().split('T')[0];
 
             const dateInput = document.getElementById('chk-fecha-entrega');
             dateInput.min = minDateStr;
             dateInput.value = minDateStr;
-            document.getElementById('chk-fecha-nota').innerText = `Fecha mínima de entrega: ${formatDate(minDateStr)} (Incluye ${maxPrepDays} día(s) de preparación requeridos).`;
+            document.getElementById('chk-fecha-nota').innerText = `Fecha mínima de entrega: ${formatDate(minDateStr)} (Incluye ${totalPrepDays} día(s) de preparación requeridos según las cantidades del pedido).`;
 
             document.getElementById('modal-checkout-form').classList.remove('hidden');
         }
