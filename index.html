@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CUPISSA - Portal de Clientes</title>
     
-    <!-- FAVICON CORREGIDO (.PNG) -->
     <link rel="shortcut icon" href="favicon.png" type="image/png">
     <link rel="icon" href="favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="favicon.png">
     
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -23,7 +21,7 @@
                             200: '#f5d0fe',
                             300: '#f0abfc',
                             400: '#e879f9',
-                            500: '#db2777', // Fucsia Fuerte Institucional
+                            500: '#db2777',
                             600: '#be185d',
                             700: '#9d174d',
                             800: '#831843',
@@ -43,6 +41,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Wompi Widget CDN -->
     <script src="https://checkout.wompi.co/widget.js"></script>
+    <!-- CryptoJS Librería para la Firma de Integridad SHA-256 de Wompi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!-- Servicio de Wompi y Lógica Independiente -->
+    <script src="wompi-service.js"></script>
 
     <style>
         .fuchsia-btn { background-color: #db2777; color: white; }
@@ -56,7 +58,6 @@
 </head>
 <body class="h-full flex flex-col bg-slate-50 text-slate-800 font-sans">
 
-    <!-- HEADER: ÚNICAMENTE LOGO.PNG -->
     <header class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
@@ -67,7 +68,6 @@
         </div>
     </header>
 
-    <!-- CONTENIDO PRINCIPAL -->
     <main class="flex-1 max-w-5xl w-full mx-auto p-4 sm:p-6 lg:p-8">
 
         <!-- LOGIN FORM -->
@@ -106,11 +106,10 @@
         <!-- DASHBOARD CLIENTE -->
         <div id="client-dashboard" class="hidden space-y-6">
             
-            <!-- TARJETA PERFIL CLIENTE -->
             <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div class="flex items-center space-x-4">
                     <div id="client-avatar" class="w-14 h-14 rounded-2xl fuchsia-bg text-white flex items-center justify-center text-xl font-black shadow-md">
-                        AG
+                        --
                     </div>
                     <div>
                         <h2 id="client-name" class="text-2xl font-black text-slate-900">Hola</h2>
@@ -126,15 +125,12 @@
                 </button>
             </div>
 
-            <!-- TARJETAS DE MÉTRICAS -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-                <!-- CUPO DISPONIBLE -->
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
                     <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Cupo Disponible</span>
                     <div id="val-cupo-disponible" class="text-3xl font-black fuchsia-text mt-2">$ 0</div>
                 </div>
 
-                <!-- DEUDA ACTUAL TOTAL -->
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
                     <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Deuda Actual Total</span>
                     <div id="val-deuda-total" class="text-3xl font-black fuchsia-text mt-2">$ 0</div>
@@ -143,29 +139,28 @@
                     </div>
                 </div>
 
-                <!-- PRÓXIMO VENCIMIENTO -->
                 <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
                     <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Próximo Vencimiento</span>
                     <div id="val-proximo-vencimiento" class="text-2xl font-black text-slate-900 mt-2">N/A</div>
-                    <div class="mt-2 text-[10px] font-semibold fuchsia-text bg-pink-50 p-2 rounded-xl inline-flex items-center space-x-1">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <span>Fecha límite para el siguiente pago</span>
+                    <div class="mt-2 text-[11px] font-medium text-amber-800 bg-amber-50 border border-amber-200 p-2.5 rounded-xl flex items-start space-x-2">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5"></i>
+                        <div>
+                            <strong>Nota sobre Mora:</strong> Se aplicará un incremento del <strong>4% sobre la cuota</strong> por cada 5 días de retraso tras la fecha límite.
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- REALIZAR PAGO -->
             <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-100 space-y-6">
                 <div>
                     <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
                         <i class="fa-solid fa-credit-card fuchsia-text"></i>
                         <span>Realizar Pago de Crédito</span>
                     </h3>
-                    <p class="text-xs text-slate-400 mt-1">Selecciona la modalidad para cancelar cuotas.</p>
+                    <p class="text-xs text-slate-400 mt-1">Selecciona la modalidad para abonar a tu deuda.</p>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- OPCION CUOTA MINIMA -->
                     <label id="opt-min-card" onclick="selectPaymentOption('min')" class="p-5 rounded-2xl border-2 fuchsia-border bg-pink-50/20 cursor-pointer flex flex-col justify-between">
                         <div>
                             <div class="flex items-center justify-between">
@@ -173,6 +168,7 @@
                                 <input type="radio" name="paymentType" id="radio-min" checked class="accent-pink-600">
                             </div>
                             <div id="opt-val-min" class="text-2xl font-black text-slate-900 mt-2">$ 0</div>
+                            <div id="opt-mora-detail-min" class="text-[11px] font-bold text-red-600 mt-1 hidden"></div>
                         </div>
                         <div class="mt-3 bg-pink-100/60 p-2 rounded-xl text-[11px] fuchsia-text font-semibold flex items-center space-x-1">
                             <i class="fa-regular fa-clock"></i>
@@ -180,7 +176,6 @@
                         </div>
                     </label>
 
-                    <!-- OPCION DEUDA TOTAL -->
                     <label id="opt-tot-card" onclick="selectPaymentOption('tot')" class="p-5 rounded-2xl border-2 border-slate-200 bg-white cursor-pointer flex flex-col justify-between">
                         <div>
                             <div class="flex items-center justify-between">
@@ -195,7 +190,6 @@
                     </label>
                 </div>
 
-                <!-- BOTÓN DE PAGO INTEGRADO CON WOMPI -->
                 <button type="button" onclick="openPaymentGateway()" class="w-full py-4 fuchsia-btn font-black rounded-2xl shadow-md transition-all text-sm flex items-center justify-center space-x-2 text-center">
                     <i class="fa-solid fa-lock text-xs"></i>
                     <span id="btn-pay-text">Pagar Cuota Mínima</span>
@@ -212,13 +206,12 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxrZHh0ZXNnd3FvaXpvYnhhYXdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIwODMxNjIsImV4cCI6MjEwNzY1OTE2Mn0.rDQ8n8O6I9uHY6z4goQCTFfRjE8zExkifIRWFbBLycE';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // CREDENCIALES DE WOMPI PRODUCCIÓN CONFIGURADAS
-        const WOMPI_PUBLIC_KEY = 'pub_prod_q69BzlCLtdFiZQEmbQFTMX9uXwr6E4Xg';
-
         let currentClient = null;
         let activeCredits = [];
         let selectedOption = 'min';
-        let minAmount = 0;
+        
+        let baseMinAmount = 0;
+        let minAmountWithMora = 0;
         let totalAmount = 0;
 
         async function handleClientLogin(e) {
@@ -243,11 +236,19 @@
             errorDiv.classList.add('hidden');
             document.getElementById('client-login-card').classList.add('hidden');
             document.getElementById('client-dashboard').classList.remove('hidden');
-            loadClientDashboard();
+            await loadClientDashboard();
         }
 
         async function loadClientDashboard() {
             if (!currentClient) return;
+
+            const { data: updatedClient } = await supabaseClient
+                .from('clientes')
+                .select('*')
+                .eq('id', currentClient.id)
+                .single();
+            
+            if (updatedClient) currentClient = updatedClient;
 
             document.getElementById('client-name').innerText = `Hola, ${currentClient.nombre}`;
             document.getElementById('client-phone').innerHTML = `<i class="fa-solid fa-phone text-[10px] mr-1"></i>${currentClient.telefono}`;
@@ -266,24 +267,39 @@
 
             if (activeCredits.length > 0) {
                 totalAmount = activeCredits.reduce((acc, c) => acc + Number(c.deuda_actual || 0), 0);
-                minAmount = activeCredits.reduce((acc, c) => acc + Number(c.valor_cuota || 0), 0);
+                baseMinAmount = activeCredits.reduce((acc, c) => acc + Number(c.valor_cuota || 0), 0);
                 
+                const nextDueDate = activeCredits[0].proximo_vencimiento;
+                const moraCalc = calculateMoraDetails(nextDueDate, baseMinAmount);
+                minAmountWithMora = moraCalc.totalWithMora;
+
                 document.getElementById('val-deuda-total').innerText = formatCOP(totalAmount);
                 document.getElementById('val-creditos-count').innerText = `${activeCredits.length} Crédito(s) Activo(s)`;
-                document.getElementById('val-proximo-vencimiento').innerText = formatDate(activeCredits[0].proximo_vencimiento);
+                document.getElementById('val-proximo-vencimiento').innerText = formatDate(nextDueDate);
                 
-                document.getElementById('opt-val-min').innerText = formatCOP(minAmount);
-                document.getElementById('opt-fecha-min').innerText = formatDate(activeCredits[0].proximo_vencimiento);
+                document.getElementById('opt-val-min').innerText = formatCOP(minAmountWithMora);
+                document.getElementById('opt-fecha-min').innerText = formatDate(nextDueDate);
                 document.getElementById('opt-val-tot').innerText = formatCOP(totalAmount);
+
+                const moraDetailElem = document.getElementById('opt-mora-detail-min');
+                if (moraCalc.latePeriods > 0) {
+                    moraDetailElem.innerText = `Incluye +${moraCalc.moraPercentage}% recargo por ${moraCalc.daysLate} días de mora (${formatCOP(moraCalc.moraAmount)})`;
+                    moraDetailElem.classList.remove('hidden');
+                } else {
+                    moraDetailElem.classList.add('hidden');
+                }
+
             } else {
                 totalAmount = 0;
-                minAmount = 0;
+                baseMinAmount = 0;
+                minAmountWithMora = 0;
                 document.getElementById('val-deuda-total').innerText = '$ 0';
                 document.getElementById('val-creditos-count').innerText = '0 Créditos Activos';
                 document.getElementById('val-proximo-vencimiento').innerText = 'Sin deudas';
                 document.getElementById('opt-val-min').innerText = '$ 0';
                 document.getElementById('opt-val-tot').innerText = '$ 0';
                 document.getElementById('opt-fecha-min').innerText = 'N/A';
+                document.getElementById('opt-mora-detail-min').classList.add('hidden');
             }
 
             selectPaymentOption('min');
@@ -301,7 +317,7 @@
                 minCard.className = "p-5 rounded-2xl border-2 fuchsia-border bg-pink-50/20 cursor-pointer flex flex-col justify-between";
                 totCard.className = "p-5 rounded-2xl border-2 border-slate-200 bg-white cursor-pointer flex flex-col justify-between";
                 radioMin.checked = true;
-                btnText.innerText = `Pagar Cuota Mínima (${formatCOP(minAmount)})`;
+                btnText.innerText = `Pagar Cuota Mínima (${formatCOP(minAmountWithMora)})`;
             } else {
                 totCard.className = "p-5 rounded-2xl border-2 fuchsia-border bg-pink-50/20 cursor-pointer flex flex-col justify-between";
                 minCard.className = "p-5 rounded-2xl border-2 border-slate-200 bg-white cursor-pointer flex flex-col justify-between";
@@ -310,96 +326,24 @@
             }
         }
 
-        // APERTURA DE LA PASARELA WOMPI FUNCIONAL
         function openPaymentGateway() {
-            const amountToPay = selectedOption === 'min' ? minAmount : totalAmount;
+            const amountToPay = selectedOption === 'min' ? minAmountWithMora : totalAmount;
             if (amountToPay <= 0) {
                 alert('No tienes deudas pendientes por pagar.');
                 return;
             }
 
-            const reference = 'CUPISSA-' + currentClient.id + '-' + Date.now();
-            const amountInCents = Math.round(amountToPay * 100);
-
-            var checkout = new WidgetCheckout({
-                currency: 'COP',
-                amountInCents: amountInCents,
-                reference: reference,
-                publicKey: WOMPI_PUBLIC_KEY,
-                customerData: {
-                    email: currentClient.correo || 'cliente@cupissa.com',
-                    fullName: currentClient.nombre,
-                    phoneNumber: currentClient.telefono
+            payWithWompi({
+                amount: amountToPay,
+                client: currentClient,
+                onSuccess: function (transaction) {
+                    alert('Transacción enviada a la pasarela. Tu saldo se actualizará automáticamente en unos momentos.');
+                    setTimeout(loadClientDashboard, 3000);
+                },
+                onError: function (transaction) {
+                    alert('El pago no pudo procesarse o fue cancelado.');
                 }
             });
-
-            checkout.open(async function (result) {
-                var transaction = result.transaction;
-                if (transaction && transaction.status === 'APPROVED') {
-                    await applyPaymentDiscounts(amountToPay);
-                } else {
-                    alert('El pago no se completó o fue rechazado.');
-                }
-            });
-        }
-
-        // APLICAR DESCUENTOS Y ACTUALIZAR FECHAS Y CUPO TRAS PAGO EXITOSO
-        async function applyPaymentDiscounts(paidAmount) {
-            let remainingPayment = paidAmount;
-            let newlyFreedCupo = 0;
-
-            for (let cred of activeCredits) {
-                if (remainingPayment <= 0) break;
-
-                let currentDebt = Number(cred.deuda_actual || 0);
-                let paymentForThisDebt = Math.min(remainingPayment, currentDebt);
-
-                let newDebt = currentDebt - paymentForThisDebt;
-                remainingPayment -= paymentForThisDebt;
-                newlyFreedCupo += paymentForThisDebt;
-
-                let newStatus = newDebt <= 0 ? 'PAGADO' : 'ACTIVO';
-                let nextDueDate = cred.proximo_vencimiento;
-
-                if (paymentForThisDebt > 0) {
-                    nextDueDate = calculateNextDueDate(cred.proximo_vencimiento, cred.frecuencia);
-                }
-
-                await supabaseClient
-                    .from('creditos')
-                    .update({
-                        deuda_actual: newDebt,
-                        estado: newStatus,
-                        proximo_vencimiento: nextDueDate
-                    })
-                    .eq('id', cred.id);
-            }
-
-            let updatedCupoDisp = Number(currentClient.cupo_disponible || 0) + newlyFreedCupo;
-            await supabaseClient
-                .from('clientes')
-                .update({ cupo_disponible: updatedCupoDisp })
-                .eq('id', currentClient.id);
-
-            currentClient.cupo_disponible = updatedCupoDisp;
-
-            alert('¡Pago exitoso! Se han aplicado los descuentos y actualizado tu cupo.');
-            loadClientDashboard();
-        }
-
-        function calculateNextDueDate(currentDateStr, frequency) {
-            let d = new Date(currentDateStr + 'T00:00:00');
-            
-            if (frequency === 'Diario') {
-                d.setDate(d.getDate() + 1);
-            } else if (frequency === 'Semanal') {
-                d.setDate(d.getDate() + 7);
-            } else if (frequency === 'Quincenal') {
-                d.setDate(d.getDate() + 15);
-            } else if (frequency === 'Mensual') {
-                d.setMonth(d.getMonth() + 1);
-            }
-            return d.toISOString().split('T')[0];
         }
 
         function handleLogout() {
