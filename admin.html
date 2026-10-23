@@ -918,15 +918,25 @@
             closeEditModal();
         }
 
-        // ==================== PRODUCTOS SUPABASE SINCRO COMPLETA ====================
+        // ==================== PRODUCTOS SUPABASE Y SINCRONIZACIÓN ====================
         async function fetchProductsData() {
             try {
                 const { data, error } = await supabaseClient.from('productos').select('*');
                 if (error) throw error;
-                allProducts = data || [];
+                
+                if (data && data.length > 0) {
+                    allProducts = data;
+                    localStorage.setItem('cupissa_cache_products', JSON.stringify(data));
+                } else {
+                    const cached = localStorage.getItem('cupissa_cache_products');
+                    if (cached) allProducts = JSON.parse(cached);
+                    else allProducts = JSON.parse(localStorage.getItem('cupissa_local_products') || '[]');
+                }
             } catch (e) {
                 console.error("Error al obtener productos:", e);
-                allProducts = JSON.parse(localStorage.getItem('cupissa_local_products') || '[]');
+                const cached = localStorage.getItem('cupissa_cache_products');
+                if (cached) allProducts = JSON.parse(cached);
+                else allProducts = JSON.parse(localStorage.getItem('cupissa_local_products') || '[]');
             }
             filteredProducts = [...allProducts];
             currentProductsPage = 1;
@@ -1248,7 +1258,7 @@
             renderPreviewPhotos();
         }
 
-        // CREACIÓN MÚLTIPLE DE PRODUCTOS POR FOTO O EDICIÓN INDIVIDUAL
+        // CREACIÓN MÚLTIPLE O EDICIÓN DE PRODUCTOS
         async function handleSaveProduct(e) {
             e.preventDefault();
             const editId = document.getElementById('prod-edit-id').value;
@@ -1284,7 +1294,7 @@
 
             try {
                 if (editId) {
-                    // MODO EDITAR UN PRODUCTO EXISTENTE
+                    // MODO EDITAR
                     const singleData = {
                         ...baseProductData,
                         fotos: tempBase64Photos.length > 0 ? tempBase64Photos : [defaultImage],
@@ -1293,13 +1303,12 @@
                     const { error } = await supabaseClient.from('productos').update(singleData).eq('id', editId);
                     if (error) throw error;
                 } else {
-                    // MODO CREAR: SI HAY N FOTOS SE CREAN N PRODUCTOS CON PORTADA DIFERENTE
+                    // MODO CREAR: SI HAY N FOTOS, CREAR N PRODUCTOS CON PORTADA DIFERENTE
                     const photosCount = tempBase64Photos.length;
                     
                     if (photosCount > 1) {
                         const productsToInsert = [];
                         for (let i = 0; i < photosCount; i++) {
-                            // Coloca la i-ésima foto como la portada (primer elemento)
                             const currentPhoto = tempBase64Photos[i];
                             const currentOrig = tempOriginalPhotos[i] || currentPhoto;
                             
@@ -1318,7 +1327,6 @@
                         const { error } = await supabaseClient.from('productos').insert(productsToInsert);
                         if (error) throw error;
                     } else {
-                        // Solo 1 foto o ninguna
                         const singleData = {
                             ...baseProductData,
                             fotos: tempBase64Photos.length > 0 ? tempBase64Photos : [defaultImage],
