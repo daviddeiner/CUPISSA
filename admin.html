@@ -182,6 +182,14 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- PAGINACIÓN CLIENTES (5 en 5) -->
+                <div class="p-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span id="clients-pagination-info" class="text-slate-500 font-semibold">Mostrando 0 de 0</span>
+                    <div class="space-x-2">
+                        <button onclick="changeClientsPage(-1)" id="btn-prev-clients" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 font-bold rounded-xl text-slate-700 disabled:opacity-40">Anterior</button>
+                        <button onclick="changeClientsPage(1)" id="btn-next-clients" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 font-bold rounded-xl text-slate-700 disabled:opacity-40">Siguiente</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -221,6 +229,14 @@
                             <!-- Carga dinámica -->
                         </tbody>
                     </table>
+                </div>
+                <!-- PAGINACIÓN PRODUCTOS (5 en 5) -->
+                <div class="pt-2 flex items-center justify-between text-xs">
+                    <span id="products-pagination-info" class="text-slate-500 font-semibold">Mostrando 0 de 0</span>
+                    <div class="space-x-2">
+                        <button onclick="changeProductsPage(-1)" id="btn-prev-products" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 font-bold rounded-xl text-slate-700 disabled:opacity-40">Anterior</button>
+                        <button onclick="changeProductsPage(1)" id="btn-next-products" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 font-bold rounded-xl text-slate-700 disabled:opacity-40">Siguiente</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -297,7 +313,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: ADMINISTRAR CLIENTE Y CRÉDITOS (CON TABLA DE CUOTAS Y EDICIÓN) -->
+    <!-- MODAL 2: ADMINISTRAR CLIENTE Y CRÉDITOS -->
     <div id="modal-edit-client" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -380,7 +396,6 @@
                     </div>
                 </div>
 
-                <!-- DESCRIPCIÓN DEL PRODUCTO -->
                 <div>
                     <label class="block font-bold text-slate-700 uppercase mb-1">Descripción del Producto (Visible en Ver Op.)</label>
                     <textarea id="prod-descripcion" rows="3" placeholder="Ingresa los detalles, materiales, cuidados o información importante del producto..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-xs"></textarea>
@@ -479,7 +494,6 @@
                     <div id="list-colores-tags" class="flex flex-wrap gap-2 pt-1"></div>
                 </div>
 
-                <!-- CARGA DE FOTOS CON RECORTADOR INTEGRADO Y SOPORTE DE FOTO COMPLETA -->
                 <div class="border border-slate-200 rounded-2xl p-4 space-y-3 bg-white">
                     <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Recórtalas para el catálogo)</label>
                     <input type="file" id="prod-files-input" multiple accept="image/*" onchange="handleImageFilesSelected(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
@@ -527,13 +541,20 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let allClients = [];
+        let filteredClients = [];
+        let currentClientsPage = 1;
+        const clientsPerPage = 5;
+
         let allProducts = [];
+        let filteredProducts = [];
+        let currentProductsPage = 1;
+        const productsPerPage = 5;
+
         let tempTallas = [];
         let tempColores = [];
         let tempBase64Photos = [];
         let tempOriginalPhotos = [];
 
-        // Variables de cola para recorte secuencial
         let pendingImageQueue = [];
         let currentCropper = null;
 
@@ -551,17 +572,27 @@
             const secCat = document.getElementById('tab-section-catalogo');
             const btnCred = document.getElementById('tab-btn-creditos');
             const btnCat = document.getElementById('tab-btn-catalogo');
+            const btnCredMob = document.getElementById('tab-btn-creditos-mob');
+            const btnCatMob = document.getElementById('tab-btn-catalogo-mob');
 
             if (tab === 'creditos') {
                 secCred.classList.remove('hidden');
                 secCat.classList.add('hidden');
                 btnCred.className = "px-4 py-2 rounded-xl font-bold text-xs transition-all bg-pink-50 fuchsia-text border border-pink-200";
                 btnCat.className = "px-4 py-2 rounded-xl font-bold text-xs transition-all text-slate-600 hover:bg-slate-100";
+                if (btnCredMob && btnCatMob) {
+                    btnCredMob.className = "flex-1 py-2 rounded-xl font-bold text-xs bg-pink-50 fuchsia-text";
+                    btnCatMob.className = "flex-1 py-2 rounded-xl font-bold text-xs text-slate-600";
+                }
             } else {
                 secCred.classList.add('hidden');
                 secCat.classList.remove('hidden');
                 btnCat.className = "px-4 py-2 rounded-xl font-bold text-xs transition-all bg-pink-50 fuchsia-text border border-pink-200";
                 btnCred.className = "px-4 py-2 rounded-xl font-bold text-xs transition-all text-slate-600 hover:bg-slate-100";
+                if (btnCredMob && btnCatMob) {
+                    btnCatMob.className = "flex-1 py-2 rounded-xl font-bold text-xs bg-pink-50 fuchsia-text";
+                    btnCredMob.className = "flex-1 py-2 rounded-xl font-bold text-xs text-slate-600";
+                }
             }
         }
 
@@ -587,39 +618,63 @@
         async function fetchAdminData() {
             const { data: clientes } = await supabaseClient.from('clientes').select('*, creditos(*)');
             allClients = clientes || [];
-            renderAdminTable(allClients);
+            filteredClients = [...allClients];
+            currentClientsPage = 1;
+            renderAdminTable();
         }
 
-        function renderAdminTable(list) {
+        function renderAdminTable() {
             const tbody = document.getElementById('admin-tbody');
-            document.getElementById('val-total-clients').innerText = list.length;
+            document.getElementById('val-total-clients').innerText = allClients.length;
             tbody.innerHTML = '';
 
-            list.forEach(client => {
-                const creditos = client.creditos || [];
-                const creditosActivos = creditos.filter(c => c.estado === 'ACTIVO');
-                const deudaTotal = creditosActivos.reduce((acc, c) => acc + Number(c.deuda_actual || 0), 0);
+            const totalPages = Math.ceil(filteredClients.length / clientsPerPage) || 1;
+            if (currentClientsPage > totalPages) currentClientsPage = totalPages;
+            if (currentClientsPage < 1) currentClientsPage = 1;
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="p-4 font-bold text-slate-900">${client.nombre}</td>
-                    <td class="p-4 font-mono font-bold fuchsia-text">${client.telefono}</td>
-                    <td class="p-4">${formatCOP(client.cupo_total || 0)}</td>
-                    <td class="p-4 font-black fuchsia-text">${formatCOP(client.cupo_disponible || 0)}</td>
-                    <td class="p-4 font-bold fuchsia-text">${formatCOP(deudaTotal)}</td>
-                    <td class="p-4 font-bold">${creditosActivos.length} Activa(s)</td>
-                    <td class="p-4 text-center">
-                        <button onclick="openEditModal('${client.id}')" class="px-3 py-1.5 bg-pink-50 fuchsia-text border border-pink-200 rounded-xl font-bold">Administrar</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            const startIdx = (currentClientsPage - 1) * clientsPerPage;
+            const endIdx = startIdx + clientsPerPage;
+            const clientsToShow = filteredClients.slice(startIdx, endIdx);
+
+            if (clientsToShow.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">No se encontraron clientes.</td></tr>`;
+            } else {
+                clientsToShow.forEach(client => {
+                    const creditos = client.creditos || [];
+                    const creditosActivos = creditos.filter(c => c.estado === 'ACTIVO');
+                    const deudaTotal = creditosActivos.reduce((acc, c) => acc + Number(c.deuda_actual || 0), 0);
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="p-4 font-bold text-slate-900">${client.nombre}</td>
+                        <td class="p-4 font-mono font-bold fuchsia-text">${client.telefono}</td>
+                        <td class="p-4">${formatCOP(client.cupo_total || 0)}</td>
+                        <td class="p-4 font-black fuchsia-text">${formatCOP(client.cupo_disponible || 0)}</td>
+                        <td class="p-4 font-bold fuchsia-text">${formatCOP(deudaTotal)}</td>
+                        <td class="p-4 font-bold">${creditosActivos.length} Activa(s)</td>
+                        <td class="p-4 text-center">
+                            <button onclick="openEditModal('${client.id}')" class="px-3 py-1.5 bg-pink-50 fuchsia-text border border-pink-200 rounded-xl font-bold">Administrar</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('clients-pagination-info').innerText = `Mostrando ${filteredClients.length > 0 ? startIdx + 1 : 0} a ${Math.min(endIdx, filteredClients.length)} de ${filteredClients.length} clientes`;
+            document.getElementById('btn-prev-clients').disabled = currentClientsPage === 1;
+            document.getElementById('btn-next-clients').disabled = endIdx >= filteredClients.length;
+        }
+
+        function changeClientsPage(direction) {
+            currentClientsPage += direction;
+            renderAdminTable();
         }
 
         function filterAdminTable() {
             const query = document.getElementById('admin-search-input').value.toLowerCase();
-            const filtered = allClients.filter(c => c.nombre.toLowerCase().includes(query) || c.telefono.includes(query));
-            renderAdminTable(filtered);
+            filteredClients = allClients.filter(c => c.nombre.toLowerCase().includes(query) || c.telefono.includes(query));
+            currentClientsPage = 1;
+            renderAdminTable();
         }
 
         function openNewClientModal() {
@@ -702,7 +757,6 @@
                 const fechaBase = cred.proximo_vencimiento || new Date().toISOString().split('T')[0];
                 const frecuencia = cred.frecuencia || 'Quincenal';
 
-                // Generar tabla de cuotas calculadas
                 let tablaCuotasHTML = '';
                 let fechaActualObj = new Date(fechaBase + 'T00:00:00');
 
@@ -716,7 +770,6 @@
                         </tr>
                     `;
 
-                    // Incrementar fecha según frecuencia
                     if (frecuencia === 'Diario') {
                         fechaActualObj.setDate(fechaActualObj.getDate() + 1);
                     } else if (frecuencia === 'Semanal') {
@@ -820,13 +873,23 @@
             alert('¡Actualizado con éxito!');
         }
 
+        // ELIMINACIÓN TOTAL Y ABSOLUTA DEL CLIENTE Y SUS CRÉDITOS
         async function deleteClientComplete() {
             const id = document.getElementById('edit-client-id').value;
-            if (!confirm('¿Eliminar cliente?')) return;
-            await supabaseClient.from('creditos').delete().eq('cliente_id', id);
-            await supabaseClient.from('clientes').delete().eq('id', id);
+            if (!confirm('¿Estás totalmente seguro de eliminar este cliente? Se borrarán sus créditos y todos sus datos de forma permanente.')) return;
+            
+            try {
+                // 1. Borrar créditos asociados en Supabase
+                await supabaseClient.from('creditos').delete().eq('cliente_id', id);
+                // 2. Borrar registro del cliente en Supabase
+                await supabaseClient.from('clientes').delete().eq('id', id);
+            } catch (e) {
+                console.error("Error al eliminar en base de datos:", e);
+            }
+
             closeEditModal();
             fetchAdminData();
+            alert('El cliente ha sido eliminado completamente del sistema.');
         }
 
         async function openAddDebtPrompt() {
@@ -850,7 +913,7 @@
             closeEditModal();
         }
 
-        // ==================== PRODUCTOS Y RECORTADOR DE IMAGEN ====================
+        // ==================== PRODUCTOS Y PAGINACIÓN DE 5 EN 5 ====================
         async function fetchProductsData() {
             try {
                 const { data } = await supabaseClient.from('productos').select('*');
@@ -858,35 +921,54 @@
             } catch (e) {
                 allProducts = JSON.parse(localStorage.getItem('cupissa_local_products') || '[]');
             }
-            renderProductsTable(allProducts);
+            filteredProducts = [...allProducts];
+            currentProductsPage = 1;
+            renderProductsTable();
         }
 
-        function renderProductsTable(list) {
+        function renderProductsTable() {
             const tbody = document.getElementById('products-tbody');
             tbody.innerHTML = '';
-            if (list.length === 0) {
+
+            const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
+            if (currentProductsPage > totalPages) currentProductsPage = totalPages;
+            if (currentProductsPage < 1) currentProductsPage = 1;
+
+            const startIdx = (currentProductsPage - 1) * productsPerPage;
+            const endIdx = startIdx + productsPerPage;
+            const productsToShow = filteredProducts.slice(startIdx, endIdx);
+
+            if (productsToShow.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400">No hay productos creados aún.</td></tr>`;
-                return;
+            } else {
+                productsToShow.forEach(p => {
+                    const foto = p.fotos && p.fotos.length > 0 ? p.fotos[0] : '';
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="p-3"><img src="${foto}" class="w-10 h-10 object-cover rounded-xl border"></td>
+                        <td class="p-3 font-bold">${p.nombre}</td>
+                        <td class="p-3 font-bold uppercase fuchsia-text">${p.mundo}</td>
+                        <td class="p-3">${p.categoria} / <span class="font-bold text-pink-600">${p.temporada}</span></td>
+                        <td class="p-3 font-black">${formatCOP(p.precio_detal)}</td>
+                        <td class="p-3">${formatCOP(p.precio_mayorista)}</td>
+                        <td class="p-3 font-bold fuchsia-text">${p.porcentaje_anticipo}%</td>
+                        <td class="p-3 text-center space-x-1">
+                            <button onclick="openEditProductModal('${p.id}')" class="p-2 bg-pink-50 fuchsia-text rounded-xl font-bold hover:bg-pink-100 transition-colors" title="Editar Producto"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteProduct('${p.id}')" class="p-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors" title="Eliminar Producto"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
             }
 
-            list.forEach(p => {
-                const foto = p.fotos && p.fotos.length > 0 ? p.fotos[0] : '';
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="p-3"><img src="${foto}" class="w-10 h-10 object-cover rounded-xl border"></td>
-                    <td class="p-3 font-bold">${p.nombre}</td>
-                    <td class="p-3 font-bold uppercase fuchsia-text">${p.mundo}</td>
-                    <td class="p-3">${p.categoria} / <span class="font-bold text-pink-600">${p.temporada}</span></td>
-                    <td class="p-3 font-black">${formatCOP(p.precio_detal)}</td>
-                    <td class="p-3">${formatCOP(p.precio_mayorista)}</td>
-                    <td class="p-3 font-bold fuchsia-text">${p.porcentaje_anticipo}%</td>
-                    <td class="p-3 text-center space-x-1">
-                        <button onclick="openEditProductModal('${p.id}')" class="p-2 bg-pink-50 fuchsia-text rounded-xl font-bold hover:bg-pink-100 transition-colors" title="Editar Producto"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteProduct('${p.id}')" class="p-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors" title="Eliminar Producto"><i class="fa-solid fa-trash"></i></button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
+            document.getElementById('products-pagination-info').innerText = `Mostrando ${filteredProducts.length > 0 ? startIdx + 1 : 0} a ${Math.min(endIdx, filteredProducts.length)} de ${filteredProducts.length} productos`;
+            document.getElementById('btn-prev-products').disabled = currentProductsPage === 1;
+            document.getElementById('btn-next-products').disabled = endIdx >= filteredProducts.length;
+        }
+
+        function changeProductsPage(direction) {
+            currentProductsPage += direction;
+            renderProductsTable();
         }
 
         function openProductModal() {
@@ -1018,7 +1100,6 @@
             });
         }
 
-        // --- MANEJO Y RECORTADOR DE IMÁGENES ---
         function handleImageFilesSelected(e) {
             const files = e.target.files;
             if (!files || files.length === 0) return;
