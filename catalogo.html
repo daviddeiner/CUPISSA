@@ -97,7 +97,7 @@
         </div>
     </header>
 
-    <!-- ZONA DE MUNDOS, TEMPORADAS, CATEGORÍAS Y SUBCATEGORÍAS (FIJA / STICKY DEBAJO DEL HEADER) -->
+    <!-- ZONA DE MUNDOS, TEMPORADAS, CATEGORÍAS Y SUBCATEGORÍAS -->
     <div class="sticky top-20 z-30 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 border-b border-slate-200/60 shadow-xs">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
             <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
@@ -120,7 +120,7 @@
                     </div>
                 </div>
 
-                <!-- NUEVO: ELEGIR CATEGORÍA (A-Z) -->
+                <!-- ELEGIR CATEGORÍA (A-Z) -->
                 <div class="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-100">
                     <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Categoría:</span>
                     <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="categorias-container">
@@ -147,7 +147,6 @@
     <!-- MAIN CONTENT -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
 
-        <!-- TÍTULO DE LA SECCIÓN LIMPIO -->
         <div class="flex items-center justify-between">
             <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Catálogo Cupissa
@@ -159,14 +158,13 @@
 
         <!-- GRILLA DE PRODUCTOS -->
         <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            <!-- CARGANDO PRODUCTOS INICIAL -->
             <div class="col-span-full py-16 text-center text-slate-500 font-bold flex flex-col items-center justify-center space-y-3">
                 <i class="fa-solid fa-circle-notch fa-spin text-pink-600 text-3xl"></i>
                 <span class="tracking-wider uppercase text-xs sm:text-sm">CARGANDO PRODUCTOS...</span>
             </div>
         </div>
 
-        <!-- ESTADO DE SCROLL INFINITO (CARGANDO MÁS / HAS LLEGADO AL FINAL) -->
+        <!-- ESTADO DE SCROLL INFINITO -->
         <div id="scroll-status-container" class="py-8 text-center hidden">
             <div id="scroll-loading-msg" class="hidden flex items-center justify-center space-x-2 text-pink-600 font-black text-xs sm:text-sm uppercase tracking-wider">
                 <i class="fa-solid fa-spinner fa-spin"></i>
@@ -182,8 +180,6 @@
     <!-- FOOTER -->
     <footer class="bg-[#0b0f19] text-slate-300 pt-16 pb-8 border-t border-slate-800 mt-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-slate-800 text-xs">
-            
-            <!-- Columna 1: Logo y descripción -->
             <div class="space-y-3">
                 <a href="catalogo.html">
                     <img src="logo.png" alt="CUPISSA" class="h-10 w-auto object-contain brightness-0 invert">
@@ -192,8 +188,6 @@
                     Soluciones integrales en comercio, alquiler, fabricación a medida y financiación directa, con cobertura en toda Colombia.
                 </p>
             </div>
-
-            <!-- Columna 2: Atención al Cliente -->
             <div class="space-y-3">
                 <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Atención al Cliente</h4>
                 <div class="flex items-center space-x-2 text-slate-400">
@@ -209,8 +203,6 @@
                     <span>Horario: Recepción 24h</span>
                 </div>
             </div>
-
-            <!-- Columna 3: Términos y Políticas -->
             <div class="space-y-3">
                 <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Términos y Políticas</h4>
                 <ul class="space-y-2.5">
@@ -219,8 +211,6 @@
                     <li><a href="tratamiento-datos.html" class="text-slate-400 hover:text-white transition-colors">Tratamiento de Datos</a></li>
                 </ul>
             </div>
-
-            <!-- Columna 4: Medios de Pago -->
             <div class="space-y-3">
                 <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Medios de Pago</h4>
                 <div class="space-y-2 text-slate-400 font-medium">
@@ -231,55 +221,41 @@
                     <div class="flex items-center space-x-2"><i class="fa-solid fa-money-bill-wave text-emerald-400"></i><span>EFECTIVO</span></div>
                 </div>
             </div>
-
         </div>
-
-        <!-- Copyright y autor -->
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex flex-col sm:flex-row items-center justify-between text-slate-500 text-[11px] gap-4">
             <div>© 2026 CUPISSA S.A.S. Todos los derechos reservados.</div>
             <div>Diseñado y Desarrollado por <span class="fuchsia-text font-bold">Deiner Gonzalez</span></div>
         </div>
     </footer>
 
-    <!-- MODAL 1: VER OPCIONES / DETALLE DE PRODUCTO -->
+    <!-- MODAL 1: OPCIONES PRODUCTO -->
     <div id="modal-product-options" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
-            
             <button onclick="closeOptionsModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 flex items-center justify-center transition-all z-10">
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- FOTO / GALERÍA DE IMÁGENES -->
                 <div class="space-y-3">
                     <div class="relative rounded-2xl overflow-hidden bg-slate-100 aspect-square border border-slate-100 group">
                         <img id="opt-modal-img" src="" alt="Producto" class="w-full h-full object-cover">
                         <div class="absolute top-3 left-3 flex flex-wrap gap-1" id="opt-modal-badges"></div>
-                        
-                        <!-- BOTÓN VER FOTO COMPLETA -->
                         <button onclick="openFullImageModal()" class="absolute bottom-3 right-3 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white rounded-xl text-[11px] font-bold backdrop-blur-md shadow-md transition-all flex items-center space-x-1.5 z-10">
                             <i class="fa-solid fa-expand text-xs"></i>
                             <span>Ver foto completa</span>
                         </button>
                     </div>
-                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-1" id="opt-modal-thumbs">
-                        <!-- Miniaturas de fotos del producto -->
-                    </div>
+                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-1" id="opt-modal-thumbs"></div>
                 </div>
-
-                <!-- DETALLES Y OPCIONES -->
                 <div class="space-y-4 flex flex-col justify-between">
                     <div>
                         <span id="opt-modal-subcat" class="text-[11px] font-black uppercase text-pink-600 tracking-wider">TEXTIL</span>
                         <h2 id="opt-modal-title" class="text-xl font-black text-slate-900 uppercase tracking-tight mt-0.5">NOMBRE PRODUCTO</h2>
                         <span id="opt-modal-ref" class="text-[10px] text-slate-400 font-bold block mt-0.5">Ref: CUP-0000</span>
 
-                        <!-- DESCRIPCIÓN DEL PRODUCTO -->
                         <div id="wrapper-descripcion" class="mt-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed hidden">
                             <p id="opt-modal-desc"></p>
                         </div>
 
-                        <!-- SELECCIÓN DE MODALIDAD -->
                         <div id="wrapper-modalidad" class="mt-3 space-y-1">
                             <label class="block text-xs font-bold text-slate-700 uppercase">Modalidad *</label>
                             <div class="grid grid-cols-2 gap-2" id="modalidad-options-container">
@@ -294,28 +270,22 @@
                             </div>
                         </div>
 
-                        <!-- SELECCIÓN DE TALLA -->
                         <div id="wrapper-tallas" class="mt-3 space-y-1 hidden">
                             <label class="block text-xs font-bold text-slate-700 uppercase">Seleccionar Talla *</label>
-                            <select id="opt-select-talla" onchange="recalculateProductPrice()" class="w-full border border-slate-200 bg-slate-50/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-pink-500 focus:outline-none">
-                            </select>
+                            <select id="opt-select-talla" onchange="recalculateProductPrice()" class="w-full border border-slate-200 bg-slate-50/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-pink-500 focus:outline-none"></select>
                         </div>
 
-                        <!-- SELECCIÓN DE COLOR -->
                         <div id="wrapper-colores" class="mt-3 space-y-1 hidden">
                             <label class="block text-xs font-bold text-slate-700 uppercase">Seleccionar Color *</label>
-                            <select id="opt-select-color" onchange="recalculateProductPrice()" class="w-full border border-slate-200 bg-slate-50/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-pink-500 focus:outline-none">
-                            </select>
+                            <select id="opt-select-color" onchange="recalculateProductPrice()" class="w-full border border-slate-200 bg-slate-50/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-pink-500 focus:outline-none"></select>
                         </div>
 
-                        <!-- PERSONALIZACIÓN -->
                         <div id="wrapper-custom" class="mt-3 space-y-1 hidden">
                             <label class="block text-xs font-bold text-slate-700 uppercase">Personalización</label>
                             <input type="text" id="opt-input-custom" placeholder="Texto o datos personalizados" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium">
                         </div>
                     </div>
 
-                    <!-- CAJA DE CANTIDAD Y PRECIO -->
                     <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3 mt-3">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center space-x-2">
@@ -342,7 +312,6 @@
                         </div>
                     </div>
 
-                    <!-- BOTONES DE ACCIÓN -->
                     <div class="flex items-center space-x-3 mt-3">
                         <button onclick="toggleFavoriteCurrent()" id="btn-modal-fav" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-pink-50 hover:text-pink-600 transition-colors">
                             <i class="fa-regular fa-heart text-xl"></i>
@@ -352,14 +321,12 @@
                             <span>Agregar al Carrito</span>
                         </button>
                     </div>
-
                 </div>
             </div>
-
         </div>
     </div>
 
-    <!-- MODAL DE VISUALIZACIÓN DE FOTO COMPLETA -->
+    <!-- MODAL FOTO COMPLETA -->
     <div id="modal-full-image" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex items-center justify-center hidden p-4">
         <div class="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
             <button onclick="closeFullImageModal()" class="absolute -top-12 right-0 text-white hover:text-pink-400 text-2xl font-bold flex items-center space-x-2 transition-colors">
@@ -370,7 +337,7 @@
         </div>
     </div>
 
-    <!-- MODAL 2: CARRITO -->
+    <!-- MODAL CARRITO -->
     <div id="modal-cart" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-end hidden">
         <div class="bg-white h-full max-w-md w-full p-6 shadow-2xl flex flex-col justify-between space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -382,9 +349,7 @@
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-
             <div id="cart-items-container" class="flex-1 overflow-y-auto custom-scrollbar space-y-3"></div>
-
             <div class="border-t border-slate-100 pt-4 space-y-3">
                 <div class="flex justify-between items-center text-sm">
                     <span class="font-bold text-slate-600">Total Estimado Productos:</span>
@@ -402,7 +367,7 @@
         </div>
     </div>
 
-    <!-- MODAL 3: FAVORITOS -->
+    <!-- MODAL FAVORITOS -->
     <div id="modal-favorites" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-end hidden">
         <div class="bg-white h-full max-w-md w-full p-6 shadow-2xl flex flex-col justify-between space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 pb-4">
@@ -414,14 +379,12 @@
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-
             <div id="favorites-items-container" class="flex-1 overflow-y-auto custom-scrollbar space-y-3"></div>
-
             <button onclick="closeFavoritesModal()" class="w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs">Cerrar</button>
         </div>
     </div>
 
-    <!-- MODAL 4: FORMULARIO DE DATOS DE ENVÍO Y WHATSAPP -->
+    <!-- MODAL CHECKOUT -->
     <div id="modal-checkout-form" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
         <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
             <button onclick="closeCheckoutFormModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg font-bold">
@@ -437,7 +400,6 @@
                     <label class="block font-bold text-slate-700 uppercase mb-1">Nombre y Apellido *</label>
                     <input type="text" id="chk-nombre" required placeholder="Ej: Ana María Gómez" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
                 </div>
-
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-bold text-slate-700 uppercase mb-1">Teléfono *</label>
@@ -448,12 +410,10 @@
                         <input type="email" id="chk-correo" placeholder="correo@example.com" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
                     </div>
                 </div>
-
                 <div>
                     <label class="block font-bold text-slate-700 uppercase mb-1">Dirección Exacta *</label>
                     <input type="text" id="chk-direccion" required placeholder="Ej: Calle 50 # 20-30 Apt 201" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
                 </div>
-
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="block font-bold text-slate-700 uppercase mb-1">Barrio *</label>
@@ -464,18 +424,15 @@
                         <input type="text" id="chk-ciudad" required placeholder="Ej: Barranquilla" class="w-full border border-slate-200 rounded-xl px-3 py-2 font-medium">
                     </div>
                 </div>
-
                 <div>
                     <label class="block font-bold fuchsia-text uppercase mb-1">Fecha de Entrega *</label>
                     <input type="date" id="chk-fecha-entrega" required class="w-full border fuchsia-border rounded-xl px-3 py-2 font-bold">
                     <p id="chk-fecha-nota" class="text-[10px] text-slate-400 mt-1">Calculando fecha mínima según tiempo de preparación...</p>
                 </div>
-
                 <div class="bg-amber-50 border border-amber-200 p-3 rounded-xl text-[11px] font-bold text-amber-800 flex items-start space-x-2">
                     <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
                     <span>Un asesor te dará el costo del domicilio/envío vía WhatsApp.</span>
                 </div>
-
                 <div class="pt-2 border-t border-slate-100 flex space-x-2">
                     <button type="button" onclick="closeCheckoutFormModal()" class="w-1/2 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold">Cancelar</button>
                     <button type="submit" class="w-1/2 py-3 fuchsia-btn rounded-xl font-black shadow-md flex items-center justify-center space-x-2">
@@ -494,7 +451,7 @@
 
         let rawProducts = [];
         let filteredProducts = [];
-        let displayLimit = 6; // Carga progresiva de 6 en 6
+        let displayLimit = 6;
         let isLoadingMore = false;
         let activeMundo = 'TODOS';
         let activeTemporada = 'TODAS';
@@ -519,7 +476,6 @@
                     if (displayLimit < filteredProducts.length) {
                         isLoadingMore = true;
                         
-                        // Mostrar mensaje "CARGANDO MÁS PRODUCTOS..."
                         const statusContainer = document.getElementById('scroll-status-container');
                         const loadingMsg = document.getElementById('scroll-loading-msg');
                         const endMsg = document.getElementById('scroll-end-msg');
@@ -529,7 +485,7 @@
                         endMsg.classList.add('hidden');
 
                         setTimeout(() => {
-                            displayLimit += 6; // Incremento progresivo
+                            displayLimit += 6;
                             renderProductsGrid();
                             isLoadingMore = false;
                         }, 400);
@@ -538,17 +494,18 @@
             });
         };
 
+        // CARGA COMPLETA DE SUPABASE
         async function fetchCatalogProducts() {
             try {
                 const { data, error } = await supabaseClient.from('productos').select('*');
                 if (error) throw error;
                 rawProducts = data || [];
             } catch (e) {
+                console.error("Error consultando Supabase:", e);
                 rawProducts = JSON.parse(localStorage.getItem('cupissa_local_products') || '[]');
             }
 
             shuffleArray(rawProducts);
-
             renderFilters();
             applyFiltersAndSearch();
         }
@@ -573,7 +530,7 @@
                 if (p.subcategoria) subcategoriasSet.add(p.subcategoria.toUpperCase());
             });
 
-            // 1. MUNDOS ORDENADOS A-Z
+            // 1. MUNDOS
             const mundosContainer = document.getElementById('mundos-container');
             const btnTodos = document.getElementById('btn-mundo-todos');
             mundosContainer.innerHTML = '';
@@ -588,7 +545,7 @@
                 mundosContainer.appendChild(btn);
             });
 
-            // 2. TEMPORADAS ORDENADAS A-Z
+            // 2. TEMPORADAS
             const tempContainer = document.getElementById('temporadas-container');
             const btnTodasTemp = document.getElementById('btn-temp-todas');
             tempContainer.innerHTML = '';
@@ -603,7 +560,7 @@
                 tempContainer.appendChild(btn);
             });
 
-            // 3. CATEGORÍAS ORDENADAS A-Z
+            // 3. CATEGORÍAS
             const catContainer = document.getElementById('categorias-container');
             const btnTodasCat = document.getElementById('btn-cat-todas');
             catContainer.innerHTML = '';
@@ -618,7 +575,7 @@
                 catContainer.appendChild(btn);
             });
 
-            // 4. SUBCATEGORÍAS ORDENADAS A-Z
+            // 4. SUBCATEGORÍAS
             const subcatContainer = document.getElementById('subcategorias-container');
             const btnTodasSubcat = document.getElementById('btn-subcat-todas');
             subcatContainer.innerHTML = '';
@@ -782,7 +739,6 @@
                 grid.appendChild(card);
             });
 
-            // GESTIÓN DEL MENSAJE FINAL DE SCROLL INFINITO
             statusContainer.classList.remove('hidden');
             loadingMsg.classList.add('hidden');
 
