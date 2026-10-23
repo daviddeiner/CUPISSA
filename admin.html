@@ -197,7 +197,7 @@
                         <i class="fa-solid fa-wand-magic-sparkles fuchsia-text"></i>
                         <span>Gestión Inteligente de Productos</span>
                     </h2>
-                    <p class="text-xs text-slate-400 mt-1">Crea, edita y organiza los productos visibles en catalogo.html</p>
+                    <p class="text-xs text-slate-400 mt-1">Crea, edita y organiza los productos visibles en catalogo.html[cite: 1]</p>
                 </div>
                 <button onclick="openProductModal()" class="px-5 py-3 fuchsia-btn rounded-2xl text-xs font-black shadow-md flex items-center space-x-2 self-start sm:self-center">
                     <i class="fa-solid fa-plus-circle"></i>
@@ -206,7 +206,7 @@
             </div>
 
             <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-6 space-y-4">
-                <h3 class="font-black text-slate-900 text-sm uppercase">Productos Registrados en el Catálogo</h3>
+                <h3 class="font-black text-slate-900 text-sm uppercase">Productos Registrados en el Catálogo[cite: 1]</h3>
                 <div class="overflow-x-auto custom-scrollbar">
                     <table class="w-full text-left text-xs">
                         <thead class="bg-slate-50 text-slate-400 font-bold uppercase border-b border-slate-100">
@@ -390,7 +390,7 @@
                 </div>
 
                 <div>
-                    <label class="block font-bold text-slate-700 uppercase mb-1">Descripción del Producto (Visible en Ver Op.)</label>
+                    <label class="block font-bold text-slate-700 uppercase mb-1">Descripción del Producto (Visible en Ver Op.)[cite: 1]</label>
                     <textarea id="prod-descripcion" rows="3" placeholder="Ingresa los detalles, materiales, cuidados o información importante del producto..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-xs"></textarea>
                 </div>
 
@@ -503,9 +503,9 @@
                 </div>
 
                 <div class="border border-slate-200 rounded-2xl p-4 space-y-3 bg-white">
-                    <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Cada foto generará un producto independiente)</label>
+                    <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Cada foto generará un producto independiente)[cite: 1]</label>
                     <input type="file" id="prod-files-input" multiple accept="image/*" onchange="handleImageFilesSelected(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
-                    <p class="text-[11px] text-slate-400">Si subes varias fotos, al crear un nuevo producto se creará un producto independiente por cada foto con portada distinta.</p>
+                    <p class="text-[11px] text-slate-400">Si subes varias fotos, al crear un nuevo producto se creará un producto independiente por cada foto con portada distinta.[cite: 1]</p>
                     <div id="files-preview-container" class="flex flex-wrap gap-3 pt-2"></div>
                 </div>
 
@@ -921,12 +921,19 @@
         // ==================== PRODUCTOS SUPABASE Y SINCRONIZACIÓN ====================
         async function fetchProductsData() {
             try {
-                const { data, error } = await supabaseClient.from('productos').select('*');
-                if (error) throw error;
+                // Ordenados por fecha de creación ascendente (en el orden que se subieron) o por ID predeterminado de inserción
+                const { data, error } = await supabaseClient.from('productos').select('*').order('created_at', { ascending: true });
+                if (error) {
+                    // Si la tabla no tiene la columna created_at, hacemos el select sin order para evitar fallos
+                    const fallbackRes = await supabaseClient.from('productos').select('*');
+                    if (fallbackRes.error) throw fallbackRes.error;
+                    allProducts = fallbackRes.data || [];
+                } else {
+                    allProducts = data || [];
+                }
                 
-                if (data && data.length > 0) {
-                    allProducts = data;
-                    localStorage.setItem('cupissa_cache_products', JSON.stringify(data));
+                if (allProducts.length > 0) {
+                    localStorage.setItem('cupissa_cache_products', JSON.stringify(allProducts));
                 } else {
                     const cached = localStorage.getItem('cupissa_cache_products');
                     if (cached) allProducts = JSON.parse(cached);
