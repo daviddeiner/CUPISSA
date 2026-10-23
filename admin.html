@@ -98,7 +98,6 @@
                 <div class="flex items-center space-x-6">
                     <img src="logo.png" alt="CUPISSA" class="h-12 w-auto object-contain">
                     
-                    <!-- PESTAÑAS ADMINISTRATIVAS -->
                     <nav class="hidden sm:flex space-x-2">
                         <button onclick="switchTab('creditos')" id="tab-btn-creditos" class="px-4 py-2 rounded-xl font-bold text-xs transition-all bg-pink-50 fuchsia-text border border-pink-200">
                             <i class="fa-solid fa-credit-card mr-1.5"></i> Créditos y Clientes
@@ -177,12 +176,9 @@
                                 <th class="p-4 text-center">ACCIONES</th>
                             </tr>
                         </thead>
-                        <tbody id="admin-tbody" class="divide-y divide-slate-100">
-                            <!-- Carga dinámica -->
-                        </tbody>
+                        <tbody id="admin-tbody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
-                <!-- PAGINACIÓN CLIENTES (5 en 5) -->
                 <div class="p-4 border-t border-slate-100 flex items-center justify-between text-xs">
                     <span id="clients-pagination-info" class="text-slate-500 font-semibold">Mostrando 0 de 0</span>
                     <div class="space-x-2">
@@ -225,12 +221,9 @@
                                 <th class="p-3 text-center">ACCIONES</th>
                             </tr>
                         </thead>
-                        <tbody id="products-tbody" class="divide-y divide-slate-100">
-                            <!-- Carga dinámica -->
-                        </tbody>
+                        <tbody id="products-tbody" class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
-                <!-- PAGINACIÓN PRODUCTOS (5 en 5) -->
                 <div class="pt-2 flex items-center justify-between text-xs">
                     <span id="products-pagination-info" class="text-slate-500 font-semibold">Mostrando 0 de 0</span>
                     <div class="space-x-2">
@@ -474,12 +467,11 @@
                     </div>
                 </div>
 
-                <!-- TALLAS DISPONIBLES CON PLANTILLA GLOBAL CÓMODA Y BORRABLE -->
+                <!-- TALLAS DISPONIBLES -->
                 <div class="border border-indigo-100 bg-indigo-50/20 rounded-2xl p-4 space-y-3">
                     <div class="flex items-center justify-between">
                         <span class="font-black text-indigo-900 uppercase">TALLAS DISPONIBLES & INCREMENTO</span>
                         
-                        <!-- BOTÓN/PLANTILLA PARA PONER TODAS LAS TALLAS DEL PRODUCTO ANTERIOR EN 1 SOLO CLIC -->
                         <div id="saved-tallas-template-wrapper" class="hidden flex items-center space-x-2">
                             <button type="button" onclick="loadSavedTallasTemplate()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-[11px] shadow-sm flex items-center space-x-1 transition-all">
                                 <i class="fa-solid fa-clone text-[10px]"></i>
@@ -511,15 +503,15 @@
                 </div>
 
                 <div class="border border-slate-200 rounded-2xl p-4 space-y-3 bg-white">
-                    <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Recórtalas para el catálogo)</label>
+                    <label class="block font-bold text-slate-700 uppercase">Fotos del Producto (Cada foto generará un producto independiente)</label>
                     <input type="file" id="prod-files-input" multiple accept="image/*" onchange="handleImageFilesSelected(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:font-bold file:bg-pink-50 file:text-pink-600 hover:file:bg-pink-100">
-                    <p class="text-[11px] text-slate-400">Puedes subir nuevas fotos. Se recortarán para la vitrina y se guardará la versión completa para el botón de "Ver foto completa".</p>
+                    <p class="text-[11px] text-slate-400">Si subes varias fotos, al crear un nuevo producto se creará un producto independiente por cada foto con portada distinta.</p>
                     <div id="files-preview-container" class="flex flex-wrap gap-3 pt-2"></div>
                 </div>
 
                 <div class="flex items-center space-x-3 pt-3 border-t border-slate-100">
                     <button type="button" onclick="closeProductModal()" class="w-1/2 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold">Cancelar</button>
-                    <button type="submit" class="w-1/2 py-3 fuchsia-btn rounded-xl font-bold shadow-md">Guardar Producto</button>
+                    <button type="submit" class="w-1/2 py-3 fuchsia-btn rounded-xl font-bold shadow-md">Guardar Producto(s)</button>
                 </div>
 
             </form>
@@ -889,15 +881,12 @@
             alert('¡Actualizado con éxito!');
         }
 
-        // ELIMINACIÓN TOTAL Y ABSOLUTA DEL CLIENTE Y SUS CRÉDITOS
         async function deleteClientComplete() {
             const id = document.getElementById('edit-client-id').value;
             if (!confirm('¿Estás totalmente seguro de eliminar este cliente? Se borrarán sus créditos y todos sus datos de forma permanente.')) return;
             
             try {
-                // 1. Borrar créditos asociados en Supabase
                 await supabaseClient.from('creditos').delete().eq('cliente_id', id);
-                // 2. Borrar registro del cliente en Supabase
                 await supabaseClient.from('clientes').delete().eq('id', id);
             } catch (e) {
                 console.error("Error al eliminar en base de datos:", e);
@@ -929,12 +918,14 @@
             closeEditModal();
         }
 
-        // ==================== PRODUCTOS Y PAGINACIÓN DE 5 EN 5 ====================
+        // ==================== PRODUCTOS SUPABASE SINCRO COMPLETA ====================
         async function fetchProductsData() {
             try {
-                const { data } = await supabaseClient.from('productos').select('*');
+                const { data, error } = await supabaseClient.from('productos').select('*');
+                if (error) throw error;
                 allProducts = data || [];
             } catch (e) {
+                console.error("Error al obtener productos:", e);
                 allProducts = JSON.parse(localStorage.getItem('cupissa_local_products') || '[]');
             }
             filteredProducts = [...allProducts];
@@ -1004,7 +995,6 @@
             const saved = JSON.parse(localStorage.getItem('cupissa_saved_tallas_template') || '[]');
             if (!saved || saved.length === 0) return;
 
-            // Agregar sin duplicar exactamente el mismo nombre de talla
             saved.forEach(item => {
                 if (!tempTallas.some(t => t.nombre.toUpperCase() === item.nombre.toUpperCase())) {
                     tempTallas.push({ nombre: item.nombre, incremento: item.incremento || 0 });
@@ -1258,16 +1248,16 @@
             renderPreviewPhotos();
         }
 
+        // CREACIÓN MÚLTIPLE DE PRODUCTOS POR FOTO O EDICIÓN INDIVIDUAL
         async function handleSaveProduct(e) {
             e.preventDefault();
             const editId = document.getElementById('prod-edit-id').value;
 
-            // GUARDAR LA PLANTILLA GLOBAL DE TALLAS SI HAY TALLAS CREADAS EN ESTE PRODUCTO
             if (tempTallas.length > 0) {
                 localStorage.setItem('cupissa_saved_tallas_template', JSON.stringify(tempTallas));
             }
 
-            const productData = {
+            const baseProductData = {
                 nombre: document.getElementById('prod-nombre').value.trim(),
                 descripcion: document.getElementById('prod-descripcion').value.trim(),
                 mundo: document.getElementById('prod-mundo').value.trim().toUpperCase(),
@@ -1287,36 +1277,100 @@
                 precio_alquiler: parseFloat(document.getElementById('prod-precio-alquiler').value) || 0,
                 valor_deposito: parseFloat(document.getElementById('prod-valor-deposito').value) || 0,
                 tallas: tempTallas,
-                colores: tempColores,
-                fotos: tempBase64Photos.length > 0 ? tempBase64Photos : ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop'],
-                fotos_originales: tempOriginalPhotos.length > 0 ? tempOriginalPhotos : (tempBase64Photos.length > 0 ? tempBase64Photos : ['https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop'])
+                colores: tempColores
             };
+
+            const defaultImage = 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=600&auto=format&fit=crop';
 
             try {
                 if (editId) {
-                    const { error } = await supabaseClient.from('productos').update(productData).eq('id', editId);
+                    // MODO EDITAR UN PRODUCTO EXISTENTE
+                    const singleData = {
+                        ...baseProductData,
+                        fotos: tempBase64Photos.length > 0 ? tempBase64Photos : [defaultImage],
+                        fotos_originales: tempOriginalPhotos.length > 0 ? tempOriginalPhotos : (tempBase64Photos.length > 0 ? tempBase64Photos : [defaultImage])
+                    };
+                    const { error } = await supabaseClient.from('productos').update(singleData).eq('id', editId);
                     if (error) throw error;
                 } else {
-                    const { error } = await supabaseClient.from('productos').insert([productData]);
-                    if (error) throw error;
+                    // MODO CREAR: SI HAY N FOTOS SE CREAN N PRODUCTOS CON PORTADA DIFERENTE
+                    const photosCount = tempBase64Photos.length;
+                    
+                    if (photosCount > 1) {
+                        const productsToInsert = [];
+                        for (let i = 0; i < photosCount; i++) {
+                            // Coloca la i-ésima foto como la portada (primer elemento)
+                            const currentPhoto = tempBase64Photos[i];
+                            const currentOrig = tempOriginalPhotos[i] || currentPhoto;
+                            
+                            const otherPhotos = tempBase64Photos.filter((_, idx) => idx !== i);
+                            const otherOrigs = tempOriginalPhotos.filter((_, idx) => idx !== i);
+
+                            const finalFotos = [currentPhoto, ...otherPhotos];
+                            const finalOrigs = [currentOrig, ...otherOrigs];
+
+                            productsToInsert.push({
+                                ...baseProductData,
+                                fotos: finalFotos,
+                                fotos_originales: finalOrigs
+                            });
+                        }
+                        const { error } = await supabaseClient.from('productos').insert(productsToInsert);
+                        if (error) throw error;
+                    } else {
+                        // Solo 1 foto o ninguna
+                        const singleData = {
+                            ...baseProductData,
+                            fotos: tempBase64Photos.length > 0 ? tempBase64Photos : [defaultImage],
+                            fotos_originales: tempOriginalPhotos.length > 0 ? tempOriginalPhotos : (tempBase64Photos.length > 0 ? tempBase64Photos : [defaultImage])
+                        };
+                        const { error } = await supabaseClient.from('productos').insert([singleData]);
+                        if (error) throw error;
+                    }
                 }
             } catch (err) {
+                console.warn("Fallo en Supabase, guardando localmente:", err);
                 if (editId) {
                     const idx = allProducts.findIndex(p => p.id == editId);
                     if (idx >= 0) {
-                        productData.id = editId;
-                        allProducts[idx] = productData;
+                        allProducts[idx] = {
+                            ...baseProductData,
+                            id: editId,
+                            fotos: tempBase64Photos.length > 0 ? tempBase64Photos : [defaultImage],
+                            fotos_originales: tempOriginalPhotos.length > 0 ? tempOriginalPhotos : [defaultImage]
+                        };
                     }
                 } else {
-                    productData.id = 'loc_' + Date.now();
-                    allProducts.push(productData);
+                    const photosCount = tempBase64Photos.length;
+                    if (photosCount > 1) {
+                        for (let i = 0; i < photosCount; i++) {
+                            const currentPhoto = tempBase64Photos[i];
+                            const currentOrig = tempOriginalPhotos[i] || currentPhoto;
+                            const otherPhotos = tempBase64Photos.filter((_, idx) => idx !== i);
+                            const otherOrigs = tempOriginalPhotos.filter((_, idx) => idx !== i);
+
+                            allProducts.push({
+                                ...baseProductData,
+                                id: 'loc_' + Date.now() + '_' + i,
+                                fotos: [currentPhoto, ...otherPhotos],
+                                fotos_originales: [currentOrig, ...otherOrigs]
+                            });
+                        }
+                    } else {
+                        allProducts.push({
+                            ...baseProductData,
+                            id: 'loc_' + Date.now(),
+                            fotos: tempBase64Photos.length > 0 ? tempBase64Photos : [defaultImage],
+                            fotos_originales: tempOriginalPhotos.length > 0 ? tempOriginalPhotos : [defaultImage]
+                        });
+                    }
                 }
                 localStorage.setItem('cupissa_local_products', JSON.stringify(allProducts));
             }
 
             closeProductModal();
             fetchProductsData();
-            alert(editId ? '¡Producto actualizado exitosamente!' : '¡Producto creado exitosamente!');
+            alert(editId ? '¡Producto actualizado exitosamente!' : '¡Producto(s) creado(s) exitosamente!');
         }
 
         async function deleteProduct(prodId) {
