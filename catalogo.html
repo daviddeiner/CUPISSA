@@ -97,7 +97,7 @@
         </div>
     </header>
 
-    <!-- ZONA DE MUNDOS, TEMPORADAS Y SUBCATEGORÍAS (FIJA / STICKY DEBAJO DEL HEADER) -->
+    <!-- ZONA DE MUNDOS, TEMPORADAS, CATEGORÍAS Y SUBCATEGORÍAS (FIJA / STICKY DEBAJO DEL HEADER) -->
     <div class="sticky top-20 z-30 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 border-b border-slate-200/60 shadow-xs">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
             <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
@@ -115,6 +115,16 @@
                     <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Temporada:</span>
                     <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="temporadas-container">
                         <button onclick="filterByTemporada('TODAS')" id="btn-temp-todas" class="px-3 py-1.5 rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
+                            Todas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- NUEVO: ELEGIR CATEGORÍA (A-Z) -->
+                <div class="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-100">
+                    <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Categoría:</span>
+                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="categorias-container">
+                        <button onclick="filterByCategoria('TODAS')" id="btn-cat-todas" class="px-3 py-1.5 rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
                             Todas
                         </button>
                     </div>
@@ -149,7 +159,22 @@
 
         <!-- GRILLA DE PRODUCTOS -->
         <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            <!-- Renderizado dinámico -->
+            <!-- CARGANDO PRODUCTOS INICIAL -->
+            <div class="col-span-full py-16 text-center text-slate-500 font-bold flex flex-col items-center justify-center space-y-3">
+                <i class="fa-solid fa-circle-notch fa-spin text-pink-600 text-3xl"></i>
+                <span class="tracking-wider uppercase text-xs sm:text-sm">CARGANDO PRODUCTOS...</span>
+            </div>
+        </div>
+
+        <!-- ESTADO DE SCROLL INFINITO (CARGANDO MÁS / HAS LLEGADO AL FINAL) -->
+        <div id="scroll-status-container" class="py-8 text-center hidden">
+            <div id="scroll-loading-msg" class="hidden flex items-center justify-center space-x-2 text-pink-600 font-black text-xs sm:text-sm uppercase tracking-wider">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <span>CARGANDO MÁS PRODUCTOS...</span>
+            </div>
+            <div id="scroll-end-msg" class="hidden text-slate-400 font-black text-xs sm:text-sm uppercase tracking-wider py-2">
+                <i class="fa-solid fa-check-circle mr-1 text-slate-300"></i> HAS LLEGADO AL FINAL
+            </div>
         </div>
 
     </main>
@@ -470,8 +495,10 @@
         let rawProducts = [];
         let filteredProducts = [];
         let displayLimit = 6; // Carga progresiva de 6 en 6
+        let isLoadingMore = false;
         let activeMundo = 'TODOS';
         let activeTemporada = 'TODAS';
+        let activeCategoria = 'TODAS';
         let activeSubcategoria = 'TODAS';
         let cart = JSON.parse(localStorage.getItem('cupissa_cart') || '[]');
         let favorites = JSON.parse(localStorage.getItem('cupissa_favs') || '[]');
@@ -486,10 +513,26 @@
             fetchCatalogProducts();
 
             window.addEventListener('scroll', () => {
+                if (isLoadingMore) return;
+                
                 if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) {
                     if (displayLimit < filteredProducts.length) {
-                        displayLimit += 6; // Incremento progresivo de 6 en 6
-                        renderProductsGrid();
+                        isLoadingMore = true;
+                        
+                        // Mostrar mensaje "CARGANDO MÁS PRODUCTOS..."
+                        const statusContainer = document.getElementById('scroll-status-container');
+                        const loadingMsg = document.getElementById('scroll-loading-msg');
+                        const endMsg = document.getElementById('scroll-end-msg');
+
+                        statusContainer.classList.remove('hidden');
+                        loadingMsg.classList.remove('hidden');
+                        endMsg.classList.add('hidden');
+
+                        setTimeout(() => {
+                            displayLimit += 6; // Incremento progresivo
+                            renderProductsGrid();
+                            isLoadingMore = false;
+                        }, 400);
                     }
                 }
             });
@@ -520,11 +563,13 @@
         function renderFilters() {
             const mundosSet = new Set();
             const temporadasSet = new Set();
+            const categoriasSet = new Set();
             const subcategoriasSet = new Set();
 
             rawProducts.forEach(p => {
                 if (p.mundo) mundosSet.add(p.mundo.toUpperCase());
                 if (p.temporada) temporadasSet.add(p.temporada.toUpperCase());
+                if (p.categoria) categoriasSet.add(p.categoria.toUpperCase());
                 if (p.subcategoria) subcategoriasSet.add(p.subcategoria.toUpperCase());
             });
 
@@ -558,7 +603,22 @@
                 tempContainer.appendChild(btn);
             });
 
-            // 3. SUBCATEGORÍAS ORDENADAS A-Z
+            // 3. CATEGORÍAS ORDENADAS A-Z
+            const catContainer = document.getElementById('categorias-container');
+            const btnTodasCat = document.getElementById('btn-cat-todas');
+            catContainer.innerHTML = '';
+            catContainer.appendChild(btnTodasCat);
+
+            Array.from(categoriasSet).sort().forEach(cat => {
+                const btn = document.createElement('button');
+                btn.onclick = () => filterByCategoria(cat);
+                btn.id = `btn-cat-${cat}`;
+                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+                btn.innerText = cat;
+                catContainer.appendChild(btn);
+            });
+
+            // 4. SUBCATEGORÍAS ORDENADAS A-Z
             const subcatContainer = document.getElementById('subcategorias-container');
             const btnTodasSubcat = document.getElementById('btn-subcat-todas');
             subcatContainer.innerHTML = '';
@@ -600,6 +660,19 @@
             applyFiltersAndSearch();
         }
 
+        function filterByCategoria(cat) {
+            activeCategoria = cat;
+            document.querySelectorAll('[id^="btn-cat-"]').forEach(btn => {
+                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+            });
+            const activeBtn = document.getElementById(`btn-cat-${cat.toLowerCase() === 'todas' ? 'todas' : cat}`);
+            if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
+            
+            shuffleArray(rawProducts);
+            displayLimit = 6;
+            applyFiltersAndSearch();
+        }
+
         function filterBySubcategoria(subcat) {
             activeSubcategoria = subcat;
             document.querySelectorAll('[id^="btn-subcat-"]').forEach(btn => {
@@ -624,8 +697,9 @@
             filteredProducts = rawProducts.filter(p => {
                 const matchMundo = activeMundo === 'TODOS' || (p.mundo && p.mundo.toUpperCase() === activeMundo);
                 const matchTemp = activeTemporada === 'TODAS' || (p.temporada && p.temporada.toUpperCase() === activeTemporada);
+                const matchCat = activeCategoria === 'TODAS' || (p.categoria && p.categoria.toUpperCase() === activeCategoria);
                 const matchSubcat = activeSubcategoria === 'TODAS' || (p.subcategoria && p.subcategoria.toUpperCase() === activeSubcategoria);
-                if (!matchMundo || !matchTemp || !matchSubcat) return false;
+                if (!matchMundo || !matchTemp || !matchCat || !matchSubcat) return false;
                 if (!query) return true;
 
                 const fullText = `${p.nombre || ''} ${p.categoria || ''} ${p.subcategoria || ''} ${p.descripcion || ''}`.toLowerCase();
@@ -660,8 +734,13 @@
             const grid = document.getElementById('products-grid');
             grid.innerHTML = '';
 
+            const statusContainer = document.getElementById('scroll-status-container');
+            const loadingMsg = document.getElementById('scroll-loading-msg');
+            const endMsg = document.getElementById('scroll-end-msg');
+
             if (filteredProducts.length === 0) {
                 grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 font-semibold">No hay productos registrados en esta sección aún.</div>`;
+                statusContainer.classList.add('hidden');
                 return;
             }
 
@@ -702,6 +781,16 @@
                 `;
                 grid.appendChild(card);
             });
+
+            // GESTIÓN DEL MENSAJE FINAL DE SCROLL INFINITO
+            statusContainer.classList.remove('hidden');
+            loadingMsg.classList.add('hidden');
+
+            if (displayLimit >= filteredProducts.length) {
+                endMsg.classList.remove('hidden');
+            } else {
+                endMsg.classList.add('hidden');
+            }
         }
 
         function openOptionsModal(prodId) {
