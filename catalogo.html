@@ -52,7 +52,7 @@
 </head>
 <body class="min-h-screen flex flex-col bg-slate-50 text-slate-800 font-sans">
 
-    <!-- HEADER / NAV (ESTÁTICO / STICKY) -->
+    <!-- HEADER / NAV -->
     <header class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-20 gap-4">
@@ -64,13 +64,13 @@
                     </a>
                 </div>
 
-                <!-- BUSCADOR INTELIGENTE (FUZZY SEARCH) -->
+                <!-- BUSCADOR INTELIGENTE -->
                 <div class="flex-1 max-w-xl mx-2 sm:mx-6">
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-sm">
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </span>
-                        <input type="text" id="smart-search-input" onkeyup="handleSmartSearch()" placeholder="Buscar en el Catálogo (ej. Sillas, Cajas, Regalos, Disfraz)..." class="w-full pl-10 pr-4 py-2.5 rounded-full bg-slate-100 border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 font-medium placeholder-slate-400 transition-all">
+                        <input type="text" id="smart-search-input" onkeyup="handleSmartSearch()" placeholder="Buscar en el Catálogo" class="w-full pl-10 pr-4 py-2.5 rounded-full bg-slate-100 border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 font-medium placeholder-slate-400 transition-all">
                     </div>
                 </div>
 
@@ -102,7 +102,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
             <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
                 
-                <!-- LISTA DE MUNDOS (A-Z) -->
+                <!-- LISTA DE MUNDOS -->
                 <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-2 border-b border-slate-100" id="mundos-container">
                     <button onclick="filterByMundo('TODOS')" id="btn-mundo-todos" class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-2 shrink-0 shadow-sm">
                         <i class="fa-solid fa-border-all"></i>
@@ -110,7 +110,7 @@
                     </button>
                 </div>
 
-                <!-- ELEGIR TEMPORADA (A-Z) -->
+                <!-- ELEGIR TEMPORADA -->
                 <div class="flex flex-wrap items-center gap-2 text-xs">
                     <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Temporada:</span>
                     <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="temporadas-container">
@@ -120,7 +120,7 @@
                     </div>
                 </div>
 
-                <!-- ELEGIR CATEGORÍA (A-Z) -->
+                <!-- ELEGIR CATEGORÍA -->
                 <div class="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-100">
                     <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Categoría:</span>
                     <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="categorias-container">
@@ -130,7 +130,7 @@
                     </div>
                 </div>
 
-                <!-- ELEGIR SUBCATEGORÍA (A-Z) -->
+                <!-- ELEGIR SUBCATEGORÍA -->
                 <div class="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-100">
                     <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Subcategoría:</span>
                     <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="subcategorias-container">
@@ -451,7 +451,7 @@
 
         let rawProducts = [];
         let filteredProducts = [];
-        let displayLimit = 6;
+        let displayLimit = 12;
         let isLoadingMore = false;
         let activeMundo = 'TODOS';
         let activeTemporada = 'TODAS';
@@ -485,36 +485,78 @@
                         endMsg.classList.add('hidden');
 
                         setTimeout(() => {
-                            displayLimit += 6;
+                            displayLimit += 12;
                             renderProductsGrid();
                             isLoadingMore = false;
-                        }, 400);
+                        }, 200);
                     }
                 }
             });
         };
 
-        // CARGA COMPLETA DE SUPABASE
+        // DESCARGA DIRECTA DE SUPABASE (SIN LOCALSTORAGE PARA EVITAR QUOTA EXCEEDED)
         async function fetchCatalogProducts() {
+            let allFetched = [];
+
             try {
-                const { data, error } = await supabaseClient.from('productos').select('*');
-                if (error) throw error;
-                rawProducts = data || [];
-            } catch (e) {
-                console.error("Error consultando Supabase:", e);
-                rawProducts = JSON.parse(localStorage.getItem('cupissa_local_products') || '[]');
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/productos?select=*`, {
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && Array.isArray(data)) {
+                        allFetched = data;
+                    }
+                }
+            } catch (err) {
+                console.error("Excepción en fetch Supabase:", err);
             }
 
-            shuffleArray(rawProducts);
+            rawProducts = allFetched.map(normalizeProduct);
+
             renderFilters();
             applyFiltersAndSearch();
         }
 
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
+        // NORMALIZADOR FLEXIBLE Y SEGURO DE PRODUCTOS
+        function normalizeProduct(p) {
+            let fotosParsed = [];
+            if (p.fotos) {
+                if (Array.isArray(p.fotos)) fotosParsed = p.fotos;
+                else if (typeof p.fotos === 'string') {
+                    try { fotosParsed = JSON.parse(p.fotos); } catch(e) { fotosParsed = [p.fotos]; }
+                }
             }
+            if (fotosParsed.length === 0) {
+                fotosParsed = ['https://via.placeholder.com/400x400?text=Cupissa'];
+            }
+
+            return {
+                id: p.id || 'p_' + Math.random().toString(36).substr(2, 9),
+                nombre: (p.nombre || p.title || 'Producto Sin Nombre').toString(),
+                descripcion: (p.descripcion || p.description || '').toString(),
+                mundo: (p.mundo || 'GENERAL').toString().trim().toUpperCase(),
+                categoria: (p.categoria || 'GENERAL').toString().trim().toUpperCase(),
+                subcategoria: (p.subcategoria || '').toString().trim().toUpperCase(),
+                temporada: (p.temporada || '').toString().trim().toUpperCase(),
+                precio_detal: parseFloat(p.precio_detal || p.precio || p.price || 0),
+                precio_mayorista: parseFloat(p.precio_mayorista || 0),
+                precio_alquiler: parseFloat(p.precio_alquiler || 0),
+                valor_deposito: parseFloat(p.valor_deposito || 0),
+                cant_min_mayorista: parseInt(p.cant_min_mayorista || 6),
+                porcentaje_anticipo: parseFloat(p.porcentaje_anticipo || 20),
+                dias_preparacion: parseInt(p.dias_preparacion || 0),
+                personalizable: !!p.personalizable,
+                alquiler: !!p.alquiler,
+                venta: p.venta !== undefined ? !!p.venta : true,
+                fotos: fotosParsed,
+                fotos_originales: p.fotos_originales || fotosParsed,
+                tallas: p.tallas || [],
+                colores: p.colores || []
+            };
         }
 
         function renderFilters() {
@@ -524,10 +566,10 @@
             const subcategoriasSet = new Set();
 
             rawProducts.forEach(p => {
-                if (p.mundo) mundosSet.add(p.mundo.toUpperCase());
-                if (p.temporada) temporadasSet.add(p.temporada.toUpperCase());
-                if (p.categoria) categoriasSet.add(p.categoria.toUpperCase());
-                if (p.subcategoria) subcategoriasSet.add(p.subcategoria.toUpperCase());
+                if (p.mundo) mundosSet.add(p.mundo);
+                if (p.temporada) temporadasSet.add(p.temporada);
+                if (p.categoria) categoriasSet.add(p.categoria);
+                if (p.subcategoria) subcategoriasSet.add(p.subcategoria);
             });
 
             // 1. MUNDOS
@@ -596,11 +638,10 @@
             document.querySelectorAll('[id^="btn-mundo-"]').forEach(btn => {
                 btn.className = "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0 flex items-center space-x-1.5";
             });
-            const activeBtn = document.getElementById(`btn-mundo-${mundo.toLowerCase() === 'todos' ? 'todos' : mundo}`);
+            const activeBtn = document.getElementById(`btn-mundo-${mundo.toString().toLowerCase() === 'todos' ? 'todos' : mundo}`);
             if (activeBtn) activeBtn.className = "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-2 shrink-0 shadow-sm";
             
-            shuffleArray(rawProducts);
-            displayLimit = 6;
+            displayLimit = 12;
             applyFiltersAndSearch();
         }
 
@@ -609,11 +650,10 @@
             document.querySelectorAll('[id^="btn-temp-"]').forEach(btn => {
                 btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
             });
-            const activeBtn = document.getElementById(`btn-temp-${temp.toLowerCase() === 'todas' ? 'todas' : temp}`);
+            const activeBtn = document.getElementById(`btn-temp-${temp.toString().toLowerCase() === 'todas' ? 'todas' : temp}`);
             if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
             
-            shuffleArray(rawProducts);
-            displayLimit = 6;
+            displayLimit = 12;
             applyFiltersAndSearch();
         }
 
@@ -622,11 +662,10 @@
             document.querySelectorAll('[id^="btn-cat-"]').forEach(btn => {
                 btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
             });
-            const activeBtn = document.getElementById(`btn-cat-${cat.toLowerCase() === 'todas' ? 'todas' : cat}`);
+            const activeBtn = document.getElementById(`btn-cat-${cat.toString().toLowerCase() === 'todas' ? 'todas' : cat}`);
             if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
             
-            shuffleArray(rawProducts);
-            displayLimit = 6;
+            displayLimit = 12;
             applyFiltersAndSearch();
         }
 
@@ -635,56 +674,41 @@
             document.querySelectorAll('[id^="btn-subcat-"]').forEach(btn => {
                 btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
             });
-            const activeBtn = document.getElementById(`btn-subcat-${subcat.toLowerCase() === 'todas' ? 'todas' : subcat}`);
+            const activeBtn = document.getElementById(`btn-subcat-${subcat.toString().toLowerCase() === 'todas' ? 'todas' : subcat}`);
             if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
             
-            shuffleArray(rawProducts);
-            displayLimit = 6;
+            displayLimit = 12;
             applyFiltersAndSearch();
         }
 
         function handleSmartSearch() {
-            displayLimit = 6;
+            displayLimit = 12;
             applyFiltersAndSearch();
         }
 
+        // COMPARACIÓN INSENSIBLE A MAYÚSCULAS Y ESPACIOS
         function applyFiltersAndSearch() {
             const query = (document.getElementById('smart-search-input').value || '').trim().toLowerCase();
 
             filteredProducts = rawProducts.filter(p => {
-                const matchMundo = activeMundo === 'TODOS' || (p.mundo && p.mundo.toUpperCase() === activeMundo);
-                const matchTemp = activeTemporada === 'TODAS' || (p.temporada && p.temporada.toUpperCase() === activeTemporada);
-                const matchCat = activeCategoria === 'TODAS' || (p.categoria && p.categoria.toUpperCase() === activeCategoria);
-                const matchSubcat = activeSubcategoria === 'TODAS' || (p.subcategoria && p.subcategoria.toUpperCase() === activeSubcategoria);
+                const pMundo = (p.mundo || '').toString().toUpperCase().trim();
+                const pTemp = (p.temporada || '').toString().toUpperCase().trim();
+                const pCat = (p.categoria || '').toString().toUpperCase().trim();
+                const pSubcat = (p.subcategoria || '').toString().toUpperCase().trim();
+
+                const matchMundo = activeMundo === 'TODOS' || pMundo === activeMundo.toString().toUpperCase().trim();
+                const matchTemp = activeTemporada === 'TODAS' || pTemp === activeTemporada.toString().toUpperCase().trim();
+                const matchCat = activeCategoria === 'TODAS' || pCat === activeCategoria.toString().toUpperCase().trim();
+                const matchSubcat = activeSubcategoria === 'TODAS' || pSubcat === activeSubcategoria.toString().toUpperCase().trim();
+                
                 if (!matchMundo || !matchTemp || !matchCat || !matchSubcat) return false;
                 if (!query) return true;
 
-                const fullText = `${p.nombre || ''} ${p.categoria || ''} ${p.subcategoria || ''} ${p.descripcion || ''}`.toLowerCase();
-                return fullText.includes(query) || fuzzyMatch(query, fullText);
+                const fullText = `${p.nombre} ${p.categoria} ${p.subcategoria} ${p.descripcion}`.toLowerCase();
+                return fullText.includes(query);
             });
 
             renderProductsGrid();
-        }
-
-        function fuzzyMatch(term, target) {
-            if (term.length < 3) return false;
-            for (let word of target.split(/\s+/)) {
-                if (levenshteinDistance(term, word) <= 2) return true;
-            }
-            return false;
-        }
-
-        function levenshteinDistance(a, b) {
-            const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
-            for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
-            for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
-            for (let i = 1; i <= a.length; i++) {
-                for (let j = 1; j <= b.length; j++) {
-                    const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-                    matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
-                }
-            }
-            return matrix[a.length][b.length];
         }
 
         function renderProductsGrid() {
