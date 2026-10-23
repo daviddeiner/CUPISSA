@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-slate-50">
+<html lang="es" class="scroll-smooth bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -50,9 +50,9 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #f0abfc; border-radius: 9999px; }
     </style>
 </head>
-<body class="h-full flex flex-col bg-slate-50 text-slate-800 font-sans">
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-800 font-sans">
 
-    <!-- HEADER / NAV -->
+    <!-- HEADER / NAV (ESTÁTICO / STICKY) -->
     <header class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-20 gap-4">
@@ -97,42 +97,57 @@
         </div>
     </header>
 
+    <!-- ZONA DE MUNDOS, TEMPORADAS Y SUBCATEGORÍAS (FIJA / STICKY DEBAJO DEL HEADER) -->
+    <div class="sticky top-20 z-30 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 border-b border-slate-200/60 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
+            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
+                
+                <!-- LISTA DE MUNDOS (A-Z) -->
+                <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-2 border-b border-slate-100" id="mundos-container">
+                    <button onclick="filterByMundo('TODOS')" id="btn-mundo-todos" class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-2 shrink-0 shadow-sm">
+                        <i class="fa-solid fa-border-all"></i>
+                        <span>TODOS LOS MUNDOS</span>
+                    </button>
+                </div>
+
+                <!-- ELEGIR TEMPORADA (A-Z) -->
+                <div class="flex flex-wrap items-center gap-2 text-xs">
+                    <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Temporada:</span>
+                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="temporadas-container">
+                        <button onclick="filterByTemporada('TODAS')" id="btn-temp-todas" class="px-3 py-1.5 rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
+                            Todas
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ELEGIR SUBCATEGORÍA (A-Z) -->
+                <div class="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-100">
+                    <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Subcategoría:</span>
+                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="subcategorias-container">
+                        <button onclick="filterBySubcategoria('TODAS')" id="btn-subcat-todas" class="px-3 py-1.5 rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
+                            Todas
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- MAIN CONTENT -->
     <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
 
-        <!-- NAVEGACIÓN DE MUNDOS Y TEMPORADAS -->
-        <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-4">
-            
-            <!-- LISTA DE MUNDOS -->
-            <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-2 border-b border-slate-100" id="mundos-container">
-                <button onclick="filterByMundo('TODOS')" id="btn-mundo-todos" class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-2 shrink-0 shadow-sm">
-                    <i class="fa-solid fa-border-all"></i>
-                    <span>TODOS LOS MUNDOS</span>
-                </button>
-            </div>
-
-            <!-- ELEGIR TEMPORADA -->
-            <div class="flex flex-wrap items-center gap-2 text-xs">
-                <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Elegir temporada:</span>
-                <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="temporadas-container">
-                    <button onclick="filterByTemporada('TODAS')" id="btn-temp-todas" class="px-3 py-1.5 rounded-lg font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all shrink-0">
-                        Todas
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- TÍTULO DE LA SECCIÓN Y CANTIDAD -->
+        <!-- TÍTULO DE LA SECCIÓN LIMPIO -->
         <div class="flex items-center justify-between">
             <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                Catálogo General Cupissa (<span id="total-products-count" class="fuchsia-text">0</span>)
+                Catálogo Cupissa
             </h1>
             <a href="index.html" class="md:hidden text-xs font-bold fuchsia-text underline">
                 Portal de Pagos
             </a>
         </div>
 
-        <!-- GRILLA DE PRODUCTOS (2 COLUMNAS EN MÓVIL, 3 EN LG, 4 EN XL) -->
+        <!-- GRILLA DE PRODUCTOS -->
         <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             <!-- Renderizado dinámico -->
         </div>
@@ -170,7 +185,7 @@
                 </div>
             </div>
 
-            <!-- Columna 3: Términos y Políticas (Conectados a páginas individuales) -->
+            <!-- Columna 3: Términos y Políticas -->
             <div class="space-y-3">
                 <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Términos y Políticas</h4>
                 <ul class="space-y-2.5">
@@ -239,7 +254,7 @@
                             <p id="opt-modal-desc"></p>
                         </div>
 
-                        <!-- SELECCIÓN DE MODALIDAD (COMPRA / VENTA VS ALQUILER) -->
+                        <!-- SELECCIÓN DE MODALIDAD -->
                         <div id="wrapper-modalidad" class="mt-3 space-y-1">
                             <label class="block text-xs font-bold text-slate-700 uppercase">Modalidad *</label>
                             <div class="grid grid-cols-2 gap-2" id="modalidad-options-container">
@@ -454,9 +469,10 @@
 
         let rawProducts = [];
         let filteredProducts = [];
-        let displayLimit = 10;
+        let displayLimit = 6; // Carga progresiva de 6 en 6
         let activeMundo = 'TODOS';
         let activeTemporada = 'TODAS';
+        let activeSubcategoria = 'TODAS';
         let cart = JSON.parse(localStorage.getItem('cupissa_cart') || '[]');
         let favorites = JSON.parse(localStorage.getItem('cupissa_favs') || '[]');
 
@@ -472,7 +488,7 @@
             window.addEventListener('scroll', () => {
                 if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) {
                     if (displayLimit < filteredProducts.length) {
-                        displayLimit += 10;
+                        displayLimit += 6; // Incremento progresivo de 6 en 6
                         renderProductsGrid();
                     }
                 }
@@ -504,18 +520,21 @@
         function renderFilters() {
             const mundosSet = new Set();
             const temporadasSet = new Set();
+            const subcategoriasSet = new Set();
 
             rawProducts.forEach(p => {
                 if (p.mundo) mundosSet.add(p.mundo.toUpperCase());
                 if (p.temporada) temporadasSet.add(p.temporada.toUpperCase());
+                if (p.subcategoria) subcategoriasSet.add(p.subcategoria.toUpperCase());
             });
 
+            // 1. MUNDOS ORDENADOS A-Z
             const mundosContainer = document.getElementById('mundos-container');
             const btnTodos = document.getElementById('btn-mundo-todos');
             mundosContainer.innerHTML = '';
             mundosContainer.appendChild(btnTodos);
 
-            mundosSet.forEach(mundo => {
+            Array.from(mundosSet).sort().forEach(mundo => {
                 const btn = document.createElement('button');
                 btn.onclick = () => filterByMundo(mundo);
                 btn.id = `btn-mundo-${mundo}`;
@@ -524,18 +543,34 @@
                 mundosContainer.appendChild(btn);
             });
 
+            // 2. TEMPORADAS ORDENADAS A-Z
             const tempContainer = document.getElementById('temporadas-container');
             const btnTodasTemp = document.getElementById('btn-temp-todas');
             tempContainer.innerHTML = '';
             tempContainer.appendChild(btnTodasTemp);
 
-            temporadasSet.forEach(temp => {
+            Array.from(temporadasSet).sort().forEach(temp => {
                 const btn = document.createElement('button');
                 btn.onclick = () => filterByTemporada(temp);
                 btn.id = `btn-temp-${temp}`;
                 btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
                 btn.innerText = temp;
                 tempContainer.appendChild(btn);
+            });
+
+            // 3. SUBCATEGORÍAS ORDENADAS A-Z
+            const subcatContainer = document.getElementById('subcategorias-container');
+            const btnTodasSubcat = document.getElementById('btn-subcat-todas');
+            subcatContainer.innerHTML = '';
+            subcatContainer.appendChild(btnTodasSubcat);
+
+            Array.from(subcategoriasSet).sort().forEach(subcat => {
+                const btn = document.createElement('button');
+                btn.onclick = () => filterBySubcategoria(subcat);
+                btn.id = `btn-subcat-${subcat}`;
+                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+                btn.innerText = subcat;
+                subcatContainer.appendChild(btn);
             });
         }
 
@@ -548,7 +583,7 @@
             if (activeBtn) activeBtn.className = "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-2 shrink-0 shadow-sm";
             
             shuffleArray(rawProducts);
-            displayLimit = 10;
+            displayLimit = 6;
             applyFiltersAndSearch();
         }
 
@@ -561,12 +596,25 @@
             if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
             
             shuffleArray(rawProducts);
-            displayLimit = 10;
+            displayLimit = 6;
+            applyFiltersAndSearch();
+        }
+
+        function filterBySubcategoria(subcat) {
+            activeSubcategoria = subcat;
+            document.querySelectorAll('[id^="btn-subcat-"]').forEach(btn => {
+                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+            });
+            const activeBtn = document.getElementById(`btn-subcat-${subcat.toLowerCase() === 'todas' ? 'todas' : subcat}`);
+            if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
+            
+            shuffleArray(rawProducts);
+            displayLimit = 6;
             applyFiltersAndSearch();
         }
 
         function handleSmartSearch() {
-            displayLimit = 10;
+            displayLimit = 6;
             applyFiltersAndSearch();
         }
 
@@ -576,7 +624,8 @@
             filteredProducts = rawProducts.filter(p => {
                 const matchMundo = activeMundo === 'TODOS' || (p.mundo && p.mundo.toUpperCase() === activeMundo);
                 const matchTemp = activeTemporada === 'TODAS' || (p.temporada && p.temporada.toUpperCase() === activeTemporada);
-                if (!matchMundo || !matchTemp) return false;
+                const matchSubcat = activeSubcategoria === 'TODAS' || (p.subcategoria && p.subcategoria.toUpperCase() === activeSubcategoria);
+                if (!matchMundo || !matchTemp || !matchSubcat) return false;
                 if (!query) return true;
 
                 const fullText = `${p.nombre || ''} ${p.categoria || ''} ${p.subcategoria || ''} ${p.descripcion || ''}`.toLowerCase();
@@ -609,11 +658,10 @@
 
         function renderProductsGrid() {
             const grid = document.getElementById('products-grid');
-            document.getElementById('total-products-count').innerText = filteredProducts.length;
             grid.innerHTML = '';
 
             if (filteredProducts.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 font-semibold">No hay productos registrados en esta categoría aún.</div>`;
+                grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 font-semibold">No hay productos registrados en esta sección aún.</div>`;
                 return;
             }
 
@@ -679,7 +727,6 @@
             document.getElementById('opt-modal-subcat').innerText = prod.subcategoria || prod.categoria || 'TEXTIL';
             document.getElementById('opt-modal-ref').innerText = `Ref: CUP-${prod.id.toString().slice(-4)}`;
 
-            // Renderizar descripción del producto
             const wrapDesc = document.getElementById('wrapper-descripcion');
             const txtDesc = document.getElementById('opt-modal-desc');
             if (prod.descripcion && prod.descripcion.trim() !== '') {
@@ -755,7 +802,6 @@
             document.getElementById('modal-product-options').classList.remove('hidden');
         }
 
-        // FUNCIÓN PARA ABRIR VISOR DE FOTO COMPLETA
         function openFullImageModal() {
             if (!selectedProductModal) return;
             const originals = selectedProductModal.fotos_originales || selectedProductModal.fotos || [];
