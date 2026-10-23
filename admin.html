@@ -474,13 +474,29 @@
                     </div>
                 </div>
 
+                <!-- TALLAS DISPONIBLES CON PLANTILLA GLOBAL CÓMODA Y BORRABLE -->
                 <div class="border border-indigo-100 bg-indigo-50/20 rounded-2xl p-4 space-y-3">
-                    <span class="font-black text-indigo-900 uppercase">TALLAS DISPONIBLES & INCREMENTO</span>
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-indigo-900 uppercase">TALLAS DISPONIBLES & INCREMENTO</span>
+                        
+                        <!-- BOTÓN/PLANTILLA PARA PONER TODAS LAS TALLAS DEL PRODUCTO ANTERIOR EN 1 SOLO CLIC -->
+                        <div id="saved-tallas-template-wrapper" class="hidden flex items-center space-x-2">
+                            <button type="button" onclick="loadSavedTallasTemplate()" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-[11px] shadow-sm flex items-center space-x-1 transition-all">
+                                <i class="fa-solid fa-clone text-[10px]"></i>
+                                <span>Usar Tallas Anteriores (<span id="saved-tallas-count">0</span>)</span>
+                            </button>
+                            <button type="button" onclick="clearSavedTallasTemplate()" class="w-6 h-6 bg-red-100 hover:bg-red-200 text-red-600 font-bold rounded-full flex items-center justify-center text-xs transition-colors" title="Borrar plantilla guardada">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="flex gap-2">
                         <input type="text" id="inp-talla-nombre" placeholder="Ej: S, M, L, XL" class="flex-1 bg-white border rounded-xl px-3 py-2">
                         <input type="number" id="inp-talla-incremento" placeholder="Incremento $" class="w-48 bg-white border rounded-xl px-3 py-2">
                         <button type="button" onclick="addTallaToList()" class="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl">+ Agregar</button>
                     </div>
+
                     <div id="list-tallas-tags" class="flex flex-wrap gap-2 pt-1"></div>
                 </div>
 
@@ -971,6 +987,40 @@
             renderProductsTable();
         }
 
+        function checkTallasTemplateUI() {
+            const saved = JSON.parse(localStorage.getItem('cupissa_saved_tallas_template') || '[]');
+            const wrap = document.getElementById('saved-tallas-template-wrapper');
+            const countSpan = document.getElementById('saved-tallas-count');
+
+            if (saved && saved.length > 0) {
+                countSpan.innerText = saved.length;
+                wrap.classList.remove('hidden');
+            } else {
+                wrap.classList.add('hidden');
+            }
+        }
+
+        function loadSavedTallasTemplate() {
+            const saved = JSON.parse(localStorage.getItem('cupissa_saved_tallas_template') || '[]');
+            if (!saved || saved.length === 0) return;
+
+            // Agregar sin duplicar exactamente el mismo nombre de talla
+            saved.forEach(item => {
+                if (!tempTallas.some(t => t.nombre.toUpperCase() === item.nombre.toUpperCase())) {
+                    tempTallas.push({ nombre: item.nombre, incremento: item.incremento || 0 });
+                }
+            });
+
+            renderTallasTags();
+        }
+
+        function clearSavedTallasTemplate() {
+            if (confirm('¿Deseas eliminar la plantilla de tallas guardada?')) {
+                localStorage.removeItem('cupissa_saved_tallas_template');
+                checkTallasTemplateUI();
+            }
+        }
+
         function openProductModal() {
             document.getElementById('prod-edit-id').value = '';
             document.getElementById('product-modal-title').innerHTML = `<i class="fa-solid fa-wand-magic-sparkles"></i><span>Configuración Inteligente de Producto Web</span>`;
@@ -998,6 +1048,7 @@
             document.getElementById('prod-precio-alquiler').value = '0';
             document.getElementById('prod-valor-deposito').value = '0';
             toggleAlquilerFields();
+            checkTallasTemplateUI();
             renderTallasTags();
             renderColoresTags();
             renderPreviewPhotos();
@@ -1040,6 +1091,7 @@
             tempOriginalPhotos = prod.fotos_originales ? [...prod.fotos_originales] : [...tempBase64Photos];
             pendingImageQueue = [];
 
+            checkTallasTemplateUI();
             renderTallasTags();
             renderColoresTags();
             renderPreviewPhotos();
@@ -1074,7 +1126,7 @@
             tempTallas.forEach((t, i) => {
                 const tag = document.createElement('span');
                 tag.className = "bg-indigo-100 text-indigo-800 font-bold px-2 py-1 rounded-xl text-[11px] flex items-center space-x-1";
-                tag.innerHTML = `<span>${t.nombre} (+${formatCOP(t.incremento)})</span><button type="button" onclick="tempTallas.splice(${i},1);renderTallasTags()" class="ml-1 text-red-500">×</button>`;
+                tag.innerHTML = `<span>${t.nombre} (+${formatCOP(t.incremento)})</span><button type="button" onclick="tempTallas.splice(${i},1);renderTallasTags()" class="ml-1 text-red-500 hover:text-red-700 font-bold">×</button>`;
                 container.appendChild(tag);
             });
         }
@@ -1095,7 +1147,7 @@
             tempColores.forEach((c, i) => {
                 const tag = document.createElement('span');
                 tag.className = "bg-pink-100 fuchsia-text font-bold px-2 py-1 rounded-xl text-[11px] flex items-center space-x-1";
-                tag.innerHTML = `<span>${c.nombre} (+${formatCOP(c.incremento)})</span><button type="button" onclick="tempColores.splice(${i},1);renderColoresTags()" class="ml-1 text-red-500">×</button>`;
+                tag.innerHTML = `<span>${c.nombre} (+${formatCOP(c.incremento)})</span><button type="button" onclick="tempColores.splice(${i},1);renderColoresTags()" class="ml-1 text-red-500 hover:text-red-700 font-bold">×</button>`;
                 container.appendChild(tag);
             });
         }
@@ -1209,6 +1261,11 @@
         async function handleSaveProduct(e) {
             e.preventDefault();
             const editId = document.getElementById('prod-edit-id').value;
+
+            // GUARDAR LA PLANTILLA GLOBAL DE TALLAS SI HAY TALLAS CREADAS EN ESTE PRODUCTO
+            if (tempTallas.length > 0) {
+                localStorage.setItem('cupissa_saved_tallas_template', JSON.stringify(tempTallas));
+            }
 
             const productData = {
                 nombre: document.getElementById('prod-nombre').value.trim(),
