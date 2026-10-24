@@ -44,6 +44,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
+    <!-- CryptoJS Librería para la comparación estricta/Hash de imágenes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
     <style>
         .fuchsia-btn { background-color: #db2777; color: white; }
         .fuchsia-btn:hover { background-color: #be185d; }
@@ -694,16 +697,41 @@
             document.getElementById('modal-new-client').classList.add('hidden');
         }
 
+        // VALIDACIÓN ANTI-DUPLICADOS AL CREAR CLIENTE
         async function handleCreateNewClient(e) {
             e.preventDefault();
-            const nombre = document.getElementById('new-client-name').value;
-            const telefono = document.getElementById('new-client-phone').value;
-            const cedula = document.getElementById('new-client-cedula').value;
+            const nombre = document.getElementById('new-client-name').value.trim();
+            const telefono = document.getElementById('new-client-phone').value.trim();
+            const cedula = document.getElementById('new-client-cedula').value.trim();
             const cupoTotal = parseFloat(document.getElementById('new-client-cupo').value) || 0;
             const deudaInicial = parseFloat(document.getElementById('new-client-deuda').value) || 0;
             const fechaVencimiento = document.getElementById('new-client-fecha-inicio').value;
             const frecuencia = document.getElementById('new-client-frecuencia').value;
             const cuotas = parseInt(document.getElementById('new-client-cuotas').value) || 1;
+
+            // VALIDACIÓN: Verificar en Supabase si ya existe un cliente con el mismo Teléfono o Cédula
+            const { data: existingClient, error: checkError } = await supabaseClient
+                .from('clientes')
+                .select('id, nombre, telefono, password')
+                .or(`telefono.eq.${telefono},password.eq.${cedula}`);
+
+            if (checkError) {
+                console.error("Error al consultar duplicados de clientes:", checkError);
+            }
+
+            if (existingClient && existingClient.length > 0) {
+                const matchPhone = existingClient.find(c => c.telefono === telefono);
+                const matchCedula = existingClient.find(c => c.password === cedula);
+
+                if (matchPhone && matchCedula) {
+                    alert(`¡NO SE PUEDE REGISTRAR! Ya existe un cliente con el mismo Teléfono (${telefono}) y la misma Cédula (${cedula}).`);
+                } else if (matchPhone) {
+                    alert(`¡NO SE PUEDE REGISTRAR! El número de teléfono (${telefono}) ya está registrado a nombre de: ${matchPhone.nombre}.`);
+                } else if (matchCedula) {
+                    alert(`¡NO SE PUEDE REGISTRAR! La cédula (${cedula}) ya está registrada a nombre de: ${matchCedula.nombre}.`);
+                }
+                return; // Se detiene la ejecución
+            }
 
             const { data: newClient, error } = await supabaseClient
                 .from('clientes')
@@ -921,10 +949,8 @@
         // ==================== PRODUCTOS SUPABASE Y SINCRONIZACIÓN ====================
         async function fetchProductsData() {
             try {
-                // Ordenados por fecha de creación ascendente (en el orden que se subieron) o por ID predeterminado de inserción
                 const { data, error } = await supabaseClient.from('productos').select('*').order('created_at', { ascending: true });
                 if (error) {
-                    // Si la tabla no tiene la columna created_at, hacemos el select sin order para evitar fallos
                     const fallbackRes = await supabaseClient.from('productos').select('*');
                     if (fallbackRes.error) throw fallbackRes.error;
                     allProducts = fallbackRes.data || [];
@@ -1304,10 +1330,67 @@
             return new Blob([u8arr], {type:mime});
         }
 
-        // CREACIÓN MÚLTIPLE O EDICIÓN DE PRODUCTOS CON STORAGE
+        // FUNCIÓN AUXILIAR PARA OBTENER EL HASH SHA-256 DE UNA IMAGEN
+        async function getImageHash(imgUrlOrBase64) {
+            try {
+                let base64String = imgUrlOrBase64;
+                if (!imgUrlOrBase64.startsWith('data:')) {
+                    // Si es una URL web externa/Storage, la descargamos como Blob
+                    const response = await fetch(imgUrlOrBase64);
+                    const blob = await response.blob();
+                    base64String = await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                }
+                const rawData = base64String.split(',')[1] || base64String;
+                return CryptoJS.SHA256(rawData).toString();
+            } catch (e) {
+                console.error("Error calculando hash de imagen:", e);
+                return null;
+            }
+        }
+
+        // CREACIÓN MÚLTIPLE O EDICIÓN DE PRODUCTOS CON VALIDACIÓN ANTI-IMÁGENES DUPLICADAS
         async function handleSaveProduct(e) {
             e.preventDefault();
             const editId = document.getElementById('prod-edit-id').value;
+
+            // VALIDACIÓN ANTI-DUPLICADOS DE IMAGEN
+            if (tempBase64Photos.length > 0) {
+                // Obtener todas las imágenes publicadas de otros productos
+                const existingPhotosWithProd = [];
+                allProducts.forEach(prod => {
+                    if (editId && prod.id == editId) return; // Si estamos editando, ignorar fotos de este mismo producto
+                    if (prod.fotos && prod.fotos.length > 0) {
+                        prod.fotos.forEach(f => existingPhotosWithProd.push({ url: f, prodNombre: prod.nombre }));
+                    }
+                    if (prod.fotos_originales && prod.fotos_originales.length > 0) {
+                        prod.fotos_originales.forEach(f => existingPhotosWithProd.push({ url: f, prodNombre: prod.nombre }));
+                    }
+                });
+
+                if (existingPhotosWithProd.length > 0) {
+                    // Generar hashes de las fotos ya publicadas
+                    const existingHashes = [];
+                    for (const item of existingPhotosWithProd) {
+                        const h = await getImageHash(item.url);
+                        if (h) existingHashes.push({ hash: h, prodNombre: item.prodNombre });
+                    }
+
+                    // Verificar cada nueva foto contra las fotos publicadas
+                    for (let i = 0; i < tempBase64Photos.length; i++) {
+                        const newHash = await getImageHash(tempBase64Photos[i]);
+                        const duplicate = existingHashes.find(item => item.hash === newHash);
+
+                        if (duplicate) {
+                            alert(`¡NO SE PUEDE PUBLICAR! La foto #${i + 1} ingresada ya existe en el catálogo y está publicada en el producto: "${duplicate.prodNombre}". Por favor elimina la foto duplicada para continuar.`);
+                            return; // Se cancela la publicación
+                        }
+                    }
+                }
+            }
 
             if (tempTallas.length > 0) {
                 localStorage.setItem('cupissa_saved_tallas_template', JSON.stringify(tempTallas));
