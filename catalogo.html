@@ -40,13 +40,16 @@
     <!-- Supabase JS CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
+    <!-- Contenedor dinámico para Datos Estructurados (SEO Google Images) -->
+    <script id="seo-schema-script" type="application/ld+json"></script>
+
     <style>
         .fuchsia-btn { background-color: #db2777; color: white; }
         .fuchsia-btn:hover { background-color: #be185d; }
         .fuchsia-bg { background-color: #db2777; }
         .fuchsia-text { color: #db2777; }
         .fuchsia-border { border-color: #db2777; }
-        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { height: 4px; width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #f0abfc; border-radius: 9999px; }
     </style>
 </head>
@@ -54,87 +57,93 @@
 
     <!-- HEADER / NAV -->
     <header class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-20 gap-4">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 sm:h-20 gap-1.5 sm:gap-4">
                 
                 <!-- LOGO -->
                 <div class="flex items-center shrink-0">
                     <a href="catalogo.html">
-                        <img src="logo.png" alt="CUPISSA" class="h-10 sm:h-12 w-auto object-contain">
+                        <img src="logo.png" alt="CUPISSA - Catálogo de productos" class="h-8 sm:h-12 w-auto object-contain">
                     </a>
                 </div>
 
-                <!-- BUSCADOR INTELIGENTE -->
-                <div class="flex-1 max-w-xl mx-2 sm:mx-6">
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-sm">
+                <!-- BUSCADOR INTELIGENTE (OPTIMIZADO Y SIEMPRE VISIBLE EN CELULARES) -->
+                <div class="flex-1 max-w-xl mx-1 sm:mx-6">
+                    <div class="relative w-full">
+                        <span class="absolute inset-y-0 left-0 pl-2.5 sm:pl-3.5 flex items-center text-pink-600 text-xs sm:text-sm">
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </span>
-                        <input type="text" id="smart-search-input" onkeyup="handleSmartSearch()" placeholder="Buscar en el Catálogo" class="w-full pl-10 pr-4 py-2.5 rounded-full bg-slate-100 border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 font-medium placeholder-slate-400 transition-all">
+                        <input type="text" id="smart-search-input" onkeyup="handleSmartSearch()" placeholder="Buscar producto..." class="w-full pl-8 sm:pl-10 pr-2.5 sm:pr-4 py-1.5 sm:py-2.5 rounded-full bg-slate-50 sm:bg-slate-100 border border-pink-300 sm:border-slate-200 text-slate-900 text-[11px] sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 font-semibold placeholder-slate-400 transition-all shadow-xs">
                     </div>
                 </div>
 
                 <!-- BOTONES RÁPIDOS Y ACCIONES -->
-                <div class="flex items-center space-x-2 sm:space-x-4 shrink-0">
+                <div class="flex items-center space-x-1 sm:space-x-4 shrink-0">
                     <a href="index.html" class="hidden md:flex items-center space-x-1.5 px-4 py-2 bg-pink-50 hover:bg-pink-100 fuchsia-text font-bold rounded-full text-xs transition-colors">
                         <i class="fa-solid fa-wallet"></i>
                         <span>Portal de Pagos</span>
                     </a>
 
                     <!-- FAVORITOS -->
-                    <button onclick="openFavoritesModal()" class="relative p-2.5 text-slate-600 hover:text-pink-600 transition-colors">
-                        <i class="fa-regular fa-heart text-xl"></i>
-                        <span id="fav-badge-count" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-sm">0</span>
+                    <button onclick="openFavoritesModal()" class="relative p-1.5 sm:p-2.5 text-slate-600 hover:text-pink-600 transition-colors">
+                        <i class="fa-regular fa-heart text-lg sm:text-xl"></i>
+                        <span id="fav-badge-count" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[9px] sm:text-[10px] font-black w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shadow-sm">0</span>
                     </button>
 
                     <!-- CARRITO -->
-                    <button onclick="openCartModal()" class="relative p-2.5 text-slate-600 hover:text-pink-600 transition-colors">
-                        <i class="fa-solid fa-bag-shopping text-xl"></i>
-                        <span id="cart-badge-count" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-sm">0</span>
+                    <button onclick="openCartModal()" class="relative p-1.5 sm:p-2.5 text-slate-600 hover:text-pink-600 transition-colors">
+                        <i class="fa-solid fa-bag-shopping text-lg sm:text-xl"></i>
+                        <span id="cart-badge-count" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[9px] sm:text-[10px] font-black w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shadow-sm">0</span>
                     </button>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- ZONA DE MUNDOS, TEMPORADAS, CATEGORÍAS Y SUBCATEGORÍAS -->
-    <div class="sticky top-20 z-30 bg-slate-50/95 backdrop-blur-md pt-4 pb-2 border-b border-slate-200/60 shadow-xs">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-3">
-            <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 space-y-3">
+    <!-- ZONA DE MUNDOS, TEMPORADAS, CATEGORÍAS Y SUBCATEGORÍAS (MÁS COMPACTA Y ALTA) -->
+    <div class="sticky top-16 sm:top-20 z-30 bg-slate-50/95 backdrop-blur-md pt-2 sm:pt-3 pb-1 sm:pb-2 border-b border-slate-200/60 shadow-xs">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 space-y-2 sm:space-y-3">
+            
+            <!-- TEXTO DE FABRICACIÓN A MEDIDA -->
+            <div class="bg-pink-50 border border-pink-200 text-pink-900 px-3 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl text-[10px] sm:text-sm font-semibold text-center shadow-xs leading-tight">
+                Somos fabricantes y hacemos productos a tu gusto. ¿Buscas algo fuera del catálogo? Cotízalo por WhatsApp: <a href="https://wa.me/573147671380" target="_blank" class="font-bold underline text-pink-700 hover:text-pink-900">3147671380</a>
+            </div>
+
+            <div class="bg-white rounded-xl sm:rounded-2xl p-2.5 sm:p-4 shadow-sm border border-slate-100 space-y-2 sm:space-y-3">
                 
                 <!-- LISTA DE MUNDOS -->
-                <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-2 border-b border-slate-100" id="mundos-container">
-                    <button onclick="filterByMundo('TODOS')" id="btn-mundo-todos" class="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-2 shrink-0 shadow-sm">
-                        <i class="fa-solid fa-border-all"></i>
+                <div class="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto custom-scrollbar pb-1.5 border-b border-slate-100" id="mundos-container">
+                    <button onclick="filterByMundo('TODOS')" id="btn-mundo-todos" class="px-2.5 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-1.5 shrink-0 shadow-sm">
+                        <i class="fa-solid fa-border-all text-[9px] sm:text-xs"></i>
                         <span>TODOS LOS MUNDOS</span>
                     </button>
                 </div>
 
                 <!-- ELEGIR TEMPORADA -->
-                <div class="flex flex-wrap items-center gap-2 text-xs">
-                    <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Temporada:</span>
-                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="temporadas-container">
-                        <button onclick="filterByTemporada('TODAS')" id="btn-temp-todas" class="px-3 py-1.5 rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
+                <div class="flex items-center gap-1.5 text-[10px] sm:text-xs">
+                    <span class="font-bold text-slate-500 uppercase tracking-wider shrink-0 text-[9px] sm:text-xs">Temp:</span>
+                    <div class="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar" id="temporadas-container">
+                        <button onclick="filterByTemporada('TODAS')" id="btn-temp-todas" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
                             Todas
                         </button>
                     </div>
                 </div>
 
                 <!-- ELEGIR CATEGORÍA -->
-                <div class="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-100">
-                    <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Categoría:</span>
-                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="categorias-container">
-                        <button onclick="filterByCategoria('TODAS')" id="btn-cat-todas" class="px-3 py-1.5 rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
+                <div class="flex items-center gap-1.5 text-[10px] sm:text-xs pt-1 border-t border-slate-100">
+                    <span class="font-bold text-slate-500 uppercase tracking-wider shrink-0 text-[9px] sm:text-xs">Cat:</span>
+                    <div class="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar" id="categorias-container">
+                        <button onclick="filterByCategoria('TODAS')" id="btn-cat-todas" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
                             Todas
                         </button>
                     </div>
                 </div>
 
                 <!-- ELEGIR SUBCATEGORÍA -->
-                <div class="flex flex-wrap items-center gap-2 text-xs pt-1 border-t border-slate-100">
-                    <span class="font-bold text-slate-500 uppercase tracking-wider mr-1">Subcategoría:</span>
-                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar" id="subcategorias-container">
-                        <button onclick="filterBySubcategoria('TODAS')" id="btn-subcat-todas" class="px-3 py-1.5 rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
+                <div class="flex items-center gap-1.5 text-[10px] sm:text-xs pt-1 border-t border-slate-100">
+                    <span class="font-bold text-slate-500 uppercase tracking-wider shrink-0 text-[9px] sm:text-xs">Subcat:</span>
+                    <div class="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar" id="subcategorias-container">
+                        <button onclick="filterBySubcategoria('TODAS')" id="btn-subcat-todas" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">
                             Todas
                         </button>
                     </div>
@@ -145,10 +154,10 @@
     </div>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+    <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
 
         <div class="flex items-center justify-between">
-            <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            <h1 class="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
                 Catálogo Cupissa
             </h1>
             <a href="index.html" class="md:hidden text-xs font-bold fuchsia-text underline">
@@ -157,7 +166,7 @@
         </div>
 
         <!-- GRILLA DE PRODUCTOS -->
-        <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+        <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-6">
             <div class="col-span-full py-16 text-center text-slate-500 font-bold flex flex-col items-center justify-center space-y-3">
                 <i class="fa-solid fa-circle-notch fa-spin text-pink-600 text-3xl"></i>
                 <span class="tracking-wider uppercase text-xs sm:text-sm">CARGANDO PRODUCTOS...</span>
@@ -165,7 +174,7 @@
         </div>
 
         <!-- ESTADO DE SCROLL INFINITO -->
-        <div id="scroll-status-container" class="py-8 text-center hidden">
+        <div id="scroll-status-container" class="py-6 text-center hidden">
             <div id="scroll-loading-msg" class="hidden flex items-center justify-center space-x-2 text-pink-600 font-black text-xs sm:text-sm uppercase tracking-wider">
                 <i class="fa-solid fa-spinner fa-spin"></i>
                 <span>CARGANDO MÁS PRODUCTOS...</span>
@@ -178,11 +187,11 @@
     </main>
 
     <!-- FOOTER -->
-    <footer class="bg-[#0b0f19] text-slate-300 pt-16 pb-8 border-t border-slate-800 mt-12">
+    <footer class="bg-[#0b0f19] text-slate-300 pt-12 sm:pt-16 pb-8 border-t border-slate-800 mt-8 sm:mt-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-slate-800 text-xs">
             <div class="space-y-3">
                 <a href="catalogo.html">
-                    <img src="logo.png" alt="CUPISSA" class="h-10 w-auto object-contain brightness-0 invert">
+                    <img src="logo.png" alt="CUPISSA - Marca Registrada" class="h-10 w-auto object-contain brightness-0 invert">
                 </a>
                 <p class="text-slate-400 leading-relaxed">
                     Soluciones integrales en comercio, alquiler, fabricación a medida y financiación directa, con cobertura en toda Colombia.
@@ -237,7 +246,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="space-y-3">
                     <div class="relative rounded-2xl overflow-hidden bg-slate-100 aspect-square border border-slate-100 group">
-                        <img id="opt-modal-img" src="" alt="Producto" class="w-full h-full object-cover">
+                        <img id="opt-modal-img" src="" alt="Producto Cupissa" class="w-full h-full object-cover">
                         <div class="absolute top-3 left-3 flex flex-wrap gap-1" id="opt-modal-badges"></div>
                         <button onclick="openFullImageModal()" class="absolute bottom-3 right-3 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white rounded-xl text-[11px] font-bold backdrop-blur-md shadow-md transition-all flex items-center space-x-1.5 z-10">
                             <i class="fa-solid fa-expand text-xs"></i>
@@ -333,7 +342,7 @@
                 <span>Cerrar</span>
                 <i class="fa-solid fa-xmark"></i>
             </button>
-            <img id="full-modal-img" src="" alt="Foto completa" class="max-h-[85vh] max-w-full object-contain rounded-2xl shadow-2xl">
+            <img id="full-modal-img" src="" alt="Foto completa del producto" class="max-h-[85vh] max-w-full object-contain rounded-2xl shadow-2xl">
         </div>
     </div>
 
@@ -472,7 +481,11 @@
             window.addEventListener('scroll', () => {
                 if (isLoadingMore) return;
                 
-                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 400) {
+                // Excluir la altura del footer del cálculo del scroll infinito
+                const footerHeight = document.querySelector('footer') ? document.querySelector('footer').offsetHeight : 0;
+                const triggerPoint = document.body.offsetHeight - footerHeight - 350;
+
+                if ((window.innerHeight + window.scrollY) >= triggerPoint) {
                     if (displayLimit < filteredProducts.length) {
                         isLoadingMore = true;
                         
@@ -525,12 +538,11 @@
             }
 
             rawProducts = allFetched.map(normalizeProduct);
-
-            // Mezclar aleatoriamente los productos para que el orden sea dinámico/cambiante en cada carga
             rawProducts = shuffleArray(rawProducts);
 
             renderFilters();
             applyFiltersAndSearch();
+            updateSEOStructuredData();
         }
 
         // NORMALIZADOR FLEXIBLE Y SEGURO DE PRODUCTOS
@@ -571,6 +583,34 @@
             };
         }
 
+        // GENERADOR DE DATOS ESTRUCTURADOS JSON-LD PARA INDEXACIÓN EN GOOGLE IMÁGENES
+        function updateSEOStructuredData() {
+            if (!rawProducts || rawProducts.length === 0) return;
+            
+            const schemaData = rawProducts.slice(0, 30).map(p => ({
+                "@context": "https://schema.org/",
+                "@type": "Product",
+                "name": p.nombre,
+                "image": p.fotos,
+                "description": p.descripcion || `${p.nombre} - Producto CUPISSA Colombia`,
+                "brand": {
+                    "@type": "Brand",
+                    "name": "CUPISSA"
+                },
+                "offers": {
+                    "@type": "Offer",
+                    "priceCurrency": "COP",
+                    "price": p.precio_detal,
+                    "availability": "https://schema.org/InStock"
+                }
+            }));
+
+            const scriptElem = document.getElementById('seo-schema-script');
+            if (scriptElem) {
+                scriptElem.textContent = JSON.stringify(schemaData);
+            }
+        }
+
         function renderFilters() {
             const mundosSet = new Set();
             const temporadasSet = new Set();
@@ -594,8 +634,8 @@
                 const btn = document.createElement('button');
                 btn.onclick = () => filterByMundo(mundo);
                 btn.id = `btn-mundo-${mundo}`;
-                btn.className = "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0 flex items-center space-x-1.5";
-                btn.innerHTML = `<i class="fa-solid fa-folder text-[10px] text-pink-500"></i><span>Mundo ${mundo}</span>`;
+                btn.className = "px-2.5 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0 flex items-center space-x-1 sm:space-x-1.5";
+                btn.innerHTML = `<i class="fa-solid fa-folder text-[9px] sm:text-[10px] text-pink-500"></i><span>Mundo ${mundo}</span>`;
                 mundosContainer.appendChild(btn);
             });
 
@@ -609,7 +649,7 @@
                 const btn = document.createElement('button');
                 btn.onclick = () => filterByTemporada(temp);
                 btn.id = `btn-temp-${temp}`;
-                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+                btn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
                 btn.innerText = temp;
                 tempContainer.appendChild(btn);
             });
@@ -624,7 +664,7 @@
                 const btn = document.createElement('button');
                 btn.onclick = () => filterByCategoria(cat);
                 btn.id = `btn-cat-${cat}`;
-                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+                btn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
                 btn.innerText = cat;
                 catContainer.appendChild(btn);
             });
@@ -639,7 +679,7 @@
                 const btn = document.createElement('button');
                 btn.onclick = () => filterBySubcategoria(subcat);
                 btn.id = `btn-subcat-${subcat}`;
-                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+                btn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
                 btn.innerText = subcat;
                 subcatContainer.appendChild(btn);
             });
@@ -648,10 +688,10 @@
         function filterByMundo(mundo) {
             activeMundo = mundo;
             document.querySelectorAll('[id^="btn-mundo-"]').forEach(btn => {
-                btn.className = "px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0 flex items-center space-x-1.5";
+                btn.className = "px-2.5 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0 flex items-center space-x-1 sm:space-x-1.5";
             });
             const activeBtn = document.getElementById(`btn-mundo-${mundo.toString().toLowerCase() === 'todos' ? 'todos' : mundo}`);
-            if (activeBtn) activeBtn.className = "px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-2 shrink-0 shadow-sm";
+            if (activeBtn) activeBtn.className = "px-2.5 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-1 sm:space-x-2 shrink-0 shadow-sm";
             
             displayLimit = 12;
             applyFiltersAndSearch();
@@ -660,10 +700,10 @@
         function filterByTemporada(temp) {
             activeTemporada = temp;
             document.querySelectorAll('[id^="btn-temp-"]').forEach(btn => {
-                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+                btn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
             });
             const activeBtn = document.getElementById(`btn-temp-${temp.toString().toLowerCase() === 'todas' ? 'todas' : temp}`);
-            if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
+            if (activeBtn) activeBtn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
             
             displayLimit = 12;
             applyFiltersAndSearch();
@@ -672,10 +712,10 @@
         function filterByCategoria(cat) {
             activeCategoria = cat;
             document.querySelectorAll('[id^="btn-cat-"]').forEach(btn => {
-                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+                btn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
             });
             const activeBtn = document.getElementById(`btn-cat-${cat.toString().toLowerCase() === 'todas' ? 'todas' : cat}`);
-            if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
+            if (activeBtn) activeBtn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
             
             displayLimit = 12;
             applyFiltersAndSearch();
@@ -684,10 +724,10 @@
         function filterBySubcategoria(subcat) {
             activeSubcategoria = subcat;
             document.querySelectorAll('[id^="btn-subcat-"]').forEach(btn => {
-                btn.className = "px-3 py-1.5 rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
+                btn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shrink-0";
             });
             const activeBtn = document.getElementById(`btn-subcat-${subcat.toString().toLowerCase() === 'todas' ? 'todas' : subcat}`);
-            if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
+            if (activeBtn) activeBtn.className = "px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-black text-white bg-pink-600 shadow-sm transition-all shrink-0";
             
             displayLimit = 12;
             applyFiltersAndSearch();
@@ -698,9 +738,53 @@
             applyFiltersAndSearch();
         }
 
-        // COMPARACIÓN INSENSIBLE A MAYÚSCULAS Y ESPACIOS
+        // ALGORITMO DE LEVENSHTEIN PARA BÚSQUEDA TOLERANTE A ERRORES / ORTOGRAFÍA
+        function getLevenshteinDistance(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) { matrix[i] = [i]; }
+            for (let j = 0; j <= a.length; j++) { matrix[0][j] = j; }
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1)
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        function matchesSearchQuery(product, query) {
+            if (!query) return true;
+            const cleanQuery = query.toLowerCase().trim();
+            const fullText = `${product.nombre} ${product.categoria} ${product.subcategoria} ${product.descripcion} ${product.mundo} ${product.temporada}`.toLowerCase();
+            
+            if (fullText.includes(cleanQuery)) return true;
+
+            const queryWords = cleanQuery.split(/\s+/).filter(Boolean);
+            const productWords = fullText.split(/[\s,\.-]+/).filter(Boolean);
+
+            return queryWords.every(qWord => {
+                if (qWord.length <= 2) {
+                    return productWords.some(pWord => pWord.includes(qWord));
+                }
+                return productWords.some(pWord => {
+                    if (pWord.includes(qWord) || qWord.includes(pWord)) return true;
+                    const maxAllowedDist = qWord.length <= 4 ? 1 : 2;
+                    return getLevenshteinDistance(qWord, pWord) <= maxAllowedDist;
+                });
+            });
+        }
+
+        // APLICAR FILTROS Y BÚSQUEDA INTELIGENTE
         function applyFiltersAndSearch() {
-            const query = (document.getElementById('smart-search-input').value || '').trim().toLowerCase();
+            const query = (document.getElementById('smart-search-input').value || '').trim();
 
             filteredProducts = rawProducts.filter(p => {
                 const pMundo = (p.mundo || '').toString().toUpperCase().trim();
@@ -716,8 +800,7 @@
                 if (!matchMundo || !matchTemp || !matchCat || !matchSubcat) return false;
                 if (!query) return true;
 
-                const fullText = `${p.nombre} ${p.categoria} ${p.subcategoria} ${p.descripcion}`.toLowerCase();
-                return fullText.includes(query);
+                return matchesSearchQuery(p, query);
             });
 
             renderProductsGrid();
@@ -732,7 +815,7 @@
             const endMsg = document.getElementById('scroll-end-msg');
 
             if (filteredProducts.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 font-semibold">No hay productos registrados en esta sección aún.</div>`;
+                grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 font-semibold">No hay productos registrados en esta sección o con coincidencia para tu búsqueda.</div>`;
                 statusContainer.classList.add('hidden');
                 return;
             }
@@ -748,7 +831,7 @@
                 card.innerHTML = `
                     <div>
                         <div class="relative bg-slate-100 aspect-square overflow-hidden">
-                            <img src="${mainFoto}" alt="${prod.nombre}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                            <img src="${mainFoto}" alt="${prod.nombre} - CUPISSA Colombia" title="${prod.nombre} - CUPISSA" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
                             <div class="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1 items-start">
                                 ${prod.temporada ? `<span class="bg-pink-600 text-white font-black text-[8px] sm:text-[9px] uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm">${prod.temporada}</span>` : ''}
                             </div>
@@ -756,17 +839,17 @@
                                 <i class="${isFav ? 'fa-solid fa-heart text-pink-600 text-xs sm:text-sm' : 'fa-regular fa-heart text-xs sm:text-sm'}"></i>
                             </button>
                         </div>
-                        <div class="p-3 sm:p-4 space-y-1 sm:space-y-2">
+                        <div class="p-2.5 sm:p-4 space-y-1 sm:space-y-2">
                             <span class="text-[9px] sm:text-[10px] font-black uppercase text-pink-600 tracking-wider">${prod.subcategoria || prod.categoria || 'TEXTIL'}</span>
                             <h3 class="font-extrabold text-slate-900 text-xs sm:text-sm uppercase tracking-tight line-clamp-1">${prod.nombre}</h3>
                         </div>
                     </div>
-                    <div class="p-3 sm:p-4 pt-0 flex flex-col sm:flex-row sm:items-center justify-between border-t border-slate-50 mt-2 gap-2">
+                    <div class="p-2.5 sm:p-4 pt-0 flex flex-col sm:flex-row sm:items-center justify-between border-t border-slate-50 mt-1 sm:mt-2 gap-1.5 sm:gap-2">
                         <div>
-                            <span class="text-[9px] sm:text-[10px] text-slate-400 block font-semibold">Precio Base</span>
+                            <span class="text-[8px] sm:text-[10px] text-slate-400 block font-semibold">Precio Base</span>
                             <span class="font-black text-slate-900 text-xs sm:text-base">${formatCOP(prod.precio_detal)}</span>
                         </div>
-                        <button onclick="openOptionsModal('${prod.id}')" class="w-full sm:w-auto px-3 py-1.5 sm:px-4 sm:py-2 fuchsia-btn font-extrabold rounded-xl sm:rounded-2xl text-[11px] sm:text-xs shadow-md transition-all flex items-center justify-center space-x-1.5">
+                        <button onclick="openOptionsModal('${prod.id}')" class="w-full sm:w-auto px-2.5 py-1.5 sm:px-4 sm:py-2 fuchsia-btn font-extrabold rounded-lg sm:rounded-2xl text-[10px] sm:text-xs shadow-md transition-all flex items-center justify-center space-x-1 sm:space-x-1.5">
                             <i class="fa-solid fa-bag-shopping text-[9px] sm:text-[10px]"></i>
                             <span>Ver Op.</span>
                         </button>
@@ -824,6 +907,8 @@
             const mainImg = document.getElementById('opt-modal-img');
             const fotos = prod.fotos && prod.fotos.length > 0 ? prod.fotos : ['https://via.placeholder.com/400x400?text=Cupissa'];
             mainImg.src = fotos[0];
+            mainImg.alt = `${prod.nombre} - CUPISSA`;
+            mainImg.title = `${prod.nombre} - CUPISSA`;
 
             const thumbsContainer = document.getElementById('opt-modal-thumbs');
             thumbsContainer.innerHTML = '';
@@ -831,6 +916,8 @@
                 fotos.forEach((url, idx) => {
                     const thumb = document.createElement('img');
                     thumb.src = url;
+                    thumb.alt = `${prod.nombre} vista ${idx+1} - CUPISSA`;
+                    thumb.title = `${prod.nombre} vista ${idx+1}`;
                     thumb.className = `w-12 h-12 object-cover rounded-xl border-2 cursor-pointer ${idx === 0 ? 'fuchsia-border' : 'border-transparent'}`;
                     thumb.onclick = () => {
                         activePhotoIndex = idx;
@@ -887,7 +974,9 @@
             if (!selectedProductModal) return;
             const originals = selectedProductModal.fotos_originales || selectedProductModal.fotos || [];
             const srcOriginal = originals[activePhotoIndex] || originals[0] || 'https://via.placeholder.com/800x800?text=Cupissa';
-            document.getElementById('full-modal-img').src = srcOriginal;
+            const fullImg = document.getElementById('full-modal-img');
+            fullImg.src = srcOriginal;
+            fullImg.alt = `${selectedProductModal.nombre} - Foto completa - CUPISSA`;
             document.getElementById('modal-full-image').classList.remove('hidden');
         }
 
@@ -1067,7 +1156,7 @@
                 const card = document.createElement('div');
                 card.className = "flex items-center space-x-3 bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs";
                 card.innerHTML = `
-                    <img src="${item.foto}" class="w-14 h-14 object-cover rounded-xl">
+                    <img src="${item.foto}" alt="${item.nombre} - CUPISSA" class="w-14 h-14 object-cover rounded-xl">
                     <div class="flex-1">
                         <h4 class="font-extrabold text-slate-900 uppercase">${item.nombre} <span class="text-[9px] bg-pink-100 fuchsia-text px-1.5 py-0.5 rounded">${item.modalidad}</span></h4>
                         <div class="text-[10px] text-slate-500 font-semibold space-x-1">
@@ -1177,7 +1266,7 @@
                     card.className = "flex items-center justify-between bg-slate-50 p-3 rounded-2xl border border-slate-100 text-xs";
                     card.innerHTML = `
                         <div class="flex items-center space-x-3">
-                            <img src="${foto}" class="w-12 h-12 object-cover rounded-xl">
+                            <img src="${foto}" alt="${prod.nombre} - CUPISSA" class="w-12 h-12 object-cover rounded-xl">
                             <div>
                                 <h4 class="font-extrabold text-slate-900 uppercase">${prod.nombre}</h4>
                                 <span class="font-black fuchsia-text">${formatCOP(prod.precio_detal)}</span>
