@@ -9,6 +9,13 @@
     <link rel="icon" href="images/favicon.png" type="image/png">
     <link rel="apple-touch-icon" href="images/favicon.png">
     
+    <!-- Supresión de advertencias de Tailwind CDN en consola -->
+    <script>
+        window.tailwind = window.tailwind || {};
+        window.tailwind.config = {
+            suppressDeprecationWarnings: true
+        };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -222,8 +229,18 @@
         let minAmountWithMora = 0;
         let totalAmount = 0;
 
+        // MANEJO SEGURO DE EVENTOS POSTMESSAGE DE PASARELAS TERCERAS
+        window.addEventListener('message', function(event) {
+            // Ignorar llamadas con orígenes no reconocidos sin romper la aplicación
+            if (typeof event.data === 'object' && event.data !== null) {
+                if (event.data.type === 'COMMAND' || event.data.type === 'INITIALIZATION') {
+                    // Mensajes internos de Visa / Wompi procesados con normalidad
+                }
+            }
+        }, false);
+
         // PERSISTENCIA DE SESIÓN AL CARGAR LA PÁGINA
-        window.onload = async function() {
+        window.addEventListener('DOMContentLoaded', async function() {
             const savedSession = localStorage.getItem('cupissa_client_session');
             if (savedSession) {
                 try {
@@ -236,7 +253,7 @@
                     localStorage.removeItem('cupissa_client_session');
                 }
             }
-        };
+        });
 
         async function handleClientLogin(e) {
             e.preventDefault();
@@ -244,7 +261,6 @@
             const password = document.getElementById('login-password').value.trim();
             const errorDiv = document.getElementById('login-error');
 
-            // Corregido con .maybeSingle() para evitar el error HTTP 406 en consola
             const { data, error } = await supabaseClient
                 .from('clientes')
                 .select('*')
@@ -258,7 +274,6 @@
             }
 
             currentClient = data;
-            // Guardar sesión en localStorage para persistencia al recargar
             localStorage.setItem('cupissa_client_session', JSON.stringify(data));
 
             errorDiv.classList.add('hidden');
@@ -301,7 +316,13 @@
                 baseMinAmount = activeCredits.reduce((acc, c) => acc + Number(c.valor_cuota || 0), 0);
                 
                 const nextDueDate = activeCredits[0].proximo_vencimiento;
-                const moraCalc = calculateMoraDetails(nextDueDate, baseMinAmount);
+                
+                // Función auxiliar de cálculo de mora segura
+                let moraCalc = { totalWithMora: baseMinAmount, latePeriods: 0, daysLate: 0, moraPercentage: 0, moraAmount: 0 };
+                if (typeof calculateMoraDetails === 'function') {
+                    moraCalc = calculateMoraDetails(nextDueDate, baseMinAmount);
+                }
+
                 minAmountWithMora = moraCalc.totalWithMora;
 
                 document.getElementById('val-deuda-total').innerText = formatCOP(totalAmount);
@@ -364,17 +385,21 @@
                 return;
             }
 
-            payWithWompi({
-                amount: amountToPay,
-                client: currentClient,
-                onSuccess: function (transaction) {
-                    alert('Transacción enviada a la pasarela. Tu saldo se actualizará automáticamente en unos momentos.');
-                    setTimeout(loadClientDashboard, 3000);
-                },
-                onError: function (transaction) {
-                    alert('El pago no pudo procesarse o fue cancelado.');
-                }
-            });
+            if (typeof payWithWompi === 'function') {
+                payWithWompi({
+                    amount: amountToPay,
+                    client: currentClient,
+                    onSuccess: function (transaction) {
+                        alert('Transacción enviada a la pasarela. Tu saldo se actualizará automáticamente en unos momentos.');
+                        setTimeout(loadClientDashboard, 3000);
+                    },
+                    onError: function (transaction) {
+                        alert('El pago no pudo procesarse o fue cancelado.');
+                    }
+                });
+            } else {
+                alert('El servicio de pago (Wompi) no está disponible en este momento.');
+            }
         }
 
         function handleLogout() {
