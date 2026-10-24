@@ -208,6 +208,20 @@
                 </button>
             </div>
 
+            <!-- BUSCADOR INTELIGENTE DE PRODUCTOS -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div class="relative w-full sm:w-80">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="admin-search-product-input" onkeyup="filterAdminProductsTable()" placeholder="Buscar producto por su nombre..." class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-pink-500 font-medium">
+                </div>
+                
+                <div class="text-xs text-slate-500 font-semibold">
+                    Productos Registrados: <strong id="val-total-products" class="fuchsia-text font-black">0</strong>
+                </div>
+            </div>
+
             <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden p-6 space-y-4">
                 <h3 class="font-black text-slate-900 text-sm uppercase">Productos Registrados en el Catálogo[cite: 1]</h3>
                 <div class="overflow-x-auto custom-scrollbar">
@@ -601,8 +615,8 @@
                 btnCat.className = "px-4 py-2 rounded-xl font-bold text-xs transition-all bg-pink-50 fuchsia-text border border-pink-200";
                 btnCred.className = "px-4 py-2 rounded-xl font-bold text-xs transition-all text-slate-600 hover:bg-slate-100";
                 if (btnCredMob && btnCatMob) {
-                    btnCredMob.className = "flex-1 py-2 rounded-xl font-bold text-xs bg-pink-50 fuchsia-text";
                     btnCredMob.className = "flex-1 py-2 rounded-xl font-bold text-xs text-slate-600";
+                    btnCatMob.className = "flex-1 py-2 rounded-xl font-bold text-xs bg-pink-50 fuchsia-text";
                 }
             }
         }
@@ -623,7 +637,7 @@
 
         function handleAdminLogout() {
             localStorage.removeItem('cupissa_admin_logged');
-            document.getElementById('admin-login-screen').classList.add('hidden');
+            document.getElementById('admin-login-screen').classList.remove('hidden');
         }
 
         async function fetchAdminData() {
@@ -682,8 +696,12 @@
         }
 
         function filterAdminTable() {
-            const query = document.getElementById('admin-search-input').value.toLowerCase();
-            filteredClients = allClients.filter(c => c.nombre.toLowerCase().includes(query) || c.telefono.includes(query));
+            const query = document.getElementById('admin-search-input').value.trim().toLowerCase();
+            filteredClients = allClients.filter(c => {
+                const nombre = (c.nombre || '').toLowerCase();
+                const telefono = (c.telefono || '').toLowerCase();
+                return nombre.includes(query) || telefono.includes(query);
+            });
             currentClientsPage = 1;
             renderAdminTable();
         }
@@ -709,7 +727,6 @@
             const frecuencia = document.getElementById('new-client-frecuencia').value;
             const cuotas = parseInt(document.getElementById('new-client-cuotas').value) || 1;
 
-            // VALIDACIÓN: Verificar en Supabase si ya existe un cliente con el mismo Teléfono o Cédula
             const { data: existingClient, error: checkError } = await supabaseClient
                 .from('clientes')
                 .select('id, nombre, telefono, password')
@@ -730,7 +747,7 @@
                 } else if (matchCedula) {
                     alert(`¡NO SE PUEDE REGISTRAR! La cédula (${cedula}) ya está registrada a nombre de: ${matchCedula.nombre}.`);
                 }
-                return; // Se detiene la ejecución
+                return;
             }
 
             const { data: newClient, error } = await supabaseClient
@@ -978,6 +995,8 @@
 
         function renderProductsTable() {
             const tbody = document.getElementById('products-tbody');
+            const totalProdEl = document.getElementById('val-total-products');
+            if (totalProdEl) totalProdEl.innerText = allProducts.length;
             tbody.innerHTML = '';
 
             const totalPages = Math.ceil(filteredProducts.length / productsPerPage) || 1;
@@ -989,7 +1008,7 @@
             const productsToShow = filteredProducts.slice(startIdx, endIdx);
 
             if (productsToShow.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400">No hay productos creados aún.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="p-8 text-center text-slate-400">No se encontraron productos con ese nombre.</td></tr>`;
             } else {
                 productsToShow.forEach(p => {
                     const foto = p.fotos && p.fotos.length > 0 ? p.fotos[0] : '';
@@ -1018,6 +1037,16 @@
 
         function changeProductsPage(direction) {
             currentProductsPage += direction;
+            renderProductsTable();
+        }
+
+        function filterAdminProductsTable() {
+            const query = document.getElementById('admin-search-product-input').value.trim().toLowerCase();
+            filteredProducts = allProducts.filter(p => {
+                const nombre = (p.nombre || '').toLowerCase();
+                return nombre.includes(query);
+            });
+            currentProductsPage = 1;
             renderProductsTable();
         }
 
@@ -1291,10 +1320,9 @@
             renderPreviewPhotos();
         }
 
-        // FUNCIONES DE UTILIDAD PARA SUBIR A SUPABASE STORAGE
         async function uploadBase64ToStorage(dataUrl) {
             if (!dataUrl || !dataUrl.startsWith('data:')) {
-                return dataUrl; // Si ya es una URL web, se devuelve intacta
+                return dataUrl;
             }
             try {
                 const blob = dataURLtoBlob(dataUrl);
@@ -1330,12 +1358,10 @@
             return new Blob([u8arr], {type:mime});
         }
 
-        // FUNCIÓN AUXILIAR PARA OBTENER EL HASH SHA-256 DE UNA IMAGEN
         async function getImageHash(imgUrlOrBase64) {
             try {
                 let base64String = imgUrlOrBase64;
                 if (!imgUrlOrBase64.startsWith('data:')) {
-                    // Si es una URL web externa/Storage, la descargamos como Blob
                     const response = await fetch(imgUrlOrBase64);
                     const blob = await response.blob();
                     base64String = await new Promise((resolve) => {
@@ -1352,17 +1378,14 @@
             }
         }
 
-        // CREACIÓN MÚLTIPLE O EDICIÓN DE PRODUCTOS CON VALIDACIÓN ANTI-IMÁGENES DUPLICADAS
         async function handleSaveProduct(e) {
             e.preventDefault();
             const editId = document.getElementById('prod-edit-id').value;
 
-            // VALIDACIÓN ANTI-DUPLICADOS DE IMAGEN
             if (tempBase64Photos.length > 0) {
-                // Obtener todas las imágenes publicadas de otros productos
                 const existingPhotosWithProd = [];
                 allProducts.forEach(prod => {
-                    if (editId && prod.id == editId) return; // Si estamos editando, ignorar fotos de este mismo producto
+                    if (editId && prod.id == editId) return;
                     if (prod.fotos && prod.fotos.length > 0) {
                         prod.fotos.forEach(f => existingPhotosWithProd.push({ url: f, prodNombre: prod.nombre }));
                     }
@@ -1372,21 +1395,19 @@
                 });
 
                 if (existingPhotosWithProd.length > 0) {
-                    // Generar hashes de las fotos ya publicadas
                     const existingHashes = [];
                     for (const item of existingPhotosWithProd) {
                         const h = await getImageHash(item.url);
                         if (h) existingHashes.push({ hash: h, prodNombre: item.prodNombre });
                     }
 
-                    // Verificar cada nueva foto contra las fotos publicadas
                     for (let i = 0; i < tempBase64Photos.length; i++) {
                         const newHash = await getImageHash(tempBase64Photos[i]);
                         const duplicate = existingHashes.find(item => item.hash === newHash);
 
                         if (duplicate) {
                             alert(`¡NO SE PUEDE PUBLICAR! La foto #${i + 1} ingresada ya existe en el catálogo y está publicada en el producto: "${duplicate.prodNombre}". Por favor elimina la foto duplicada para continuar.`);
-                            return; // Se cancela la publicación
+                            return;
                         }
                     }
                 }
@@ -1396,7 +1417,6 @@
                 localStorage.setItem('cupissa_saved_tallas_template', JSON.stringify(tempTallas));
             }
 
-            // Subir imágenes pendientes a Supabase Storage antes de guardar en la tabla
             const uploadedPhotos = [];
             for (const fotoUrl of tempBase64Photos) {
                 const finalUrl = await uploadBase64ToStorage(fotoUrl);
@@ -1436,7 +1456,6 @@
 
             try {
                 if (editId) {
-                    // MODO EDITAR
                     const singleData = {
                         ...baseProductData,
                         fotos: uploadedPhotos.length > 0 ? uploadedPhotos : [defaultImage],
@@ -1445,7 +1464,6 @@
                     const { error } = await supabaseClient.from('productos').update(singleData).eq('id', editId);
                     if (error) throw error;
                 } else {
-                    // MODO CREAR: SI HAY N FOTOS, CREAR N PRODUCTOS CON PORTADA DIFERENTE
                     const photosCount = uploadedPhotos.length;
                     
                     if (photosCount > 1) {
