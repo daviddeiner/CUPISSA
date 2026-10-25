@@ -68,11 +68,11 @@
 
     <!-- VENTANA FLOTANTE (TOAST) TEMPORAL -->
     <div id="toast-notification" class="fixed top-6 right-6 z-50 hidden max-w-sm bg-white border border-pink-100 shadow-2xl rounded-2xl p-4 flex items-center space-x-3 toast-animation">
-        <div class="w-10 h-10 rounded-xl bg-pink-100 fuchsia-text flex items-center justify-center font-bold text-lg flex-shrink-0">
-            <i class="fa-solid fa-circle-check"></i>
+        <div id="toast-icon-container" class="w-10 h-10 rounded-xl bg-pink-100 fuchsia-text flex items-center justify-center font-bold text-lg flex-shrink-0">
+            <i id="toast-icon" class="fa-solid fa-circle-check"></i>
         </div>
         <div>
-            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-900">Notificación de Pago</h4>
+            <h4 id="toast-title" class="text-xs font-bold uppercase tracking-wider text-slate-900">Notificación de Pago</h4>
             <p id="toast-message" class="text-xs text-slate-600 font-medium mt-0.5">Tu pago ha sido procesado con éxito</p>
         </div>
     </div>
@@ -241,10 +241,21 @@
         let minAmountWithMora = 0;
         let totalAmount = 0;
 
-        function showToast(message = "Tu pago ha sido procesado con éxito") {
+        function showToast(message = "Tu pago ha sido procesado con éxito", isError = false) {
             const toast = document.getElementById('toast-notification');
             const toastMsg = document.getElementById('toast-message');
+            const toastIconContainer = document.getElementById('toast-icon-container');
+            const toastIcon = document.getElementById('toast-icon');
+
             toastMsg.innerText = message;
+
+            if (isError) {
+                toastIconContainer.className = "w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-bold text-lg flex-shrink-0";
+                toastIcon.className = "fa-solid fa-triangle-exclamation";
+            } else {
+                toastIconContainer.className = "w-10 h-10 rounded-xl bg-pink-100 fuchsia-text flex items-center justify-center font-bold text-lg flex-shrink-0";
+                toastIcon.className = "fa-solid fa-circle-check";
+            }
             
             toast.classList.remove('hidden');
             setTimeout(() => {
@@ -400,7 +411,7 @@
         function openPaymentGateway() {
             const amountToPay = selectedOption === 'min' ? minAmountWithMora : totalAmount;
             if (amountToPay <= 0) {
-                showToast('No tienes deudas pendientes por pagar.');
+                showToast('No tienes deudas pendientes por pagar.', true);
                 return;
             }
 
@@ -409,15 +420,15 @@
                     amount: amountToPay,
                     client: currentClient,
                     onSuccess: function (transaction) {
-                        showToast('Tu pago ha sido procesado con éxito');
+                        showToast('Tu pago ha sido procesado con éxito', false);
                         setTimeout(loadClientDashboard, 3000);
                     },
                     onError: function (transaction) {
-                        showToast('El pago no pudo procesarse o fue cancelado.');
+                        showToast('El pago no pudo procesarse o fue cancelado.', true);
                     }
                 });
             } else {
-                showToast('El servicio de pago (Wompi) no está disponible en este momento.');
+                showToast('El servicio de pago (Wompi) no está disponible en este momento.', true);
             }
         }
 
