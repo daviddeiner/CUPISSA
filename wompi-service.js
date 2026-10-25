@@ -94,7 +94,7 @@ function calculateMoraDetails(dueDateStr, baseAmount) {
 }
 
 /**
- * PROCESA EL DESCUENTO EN SUPABASE SOLO SI EL PAGO ES EXITOSO
+ * PROCESA EL DESCUENTO EN SUPABASE SOLO SI EL PAGO ES EXITOSO (MODO LOCAL/FRONT)
  */
 async function processPaymentInSupabaseDirectly(clientId, paidAmount) {
     if (typeof supabaseClient === 'undefined') {
@@ -105,7 +105,7 @@ async function processPaymentInSupabaseDirectly(clientId, paidAmount) {
     try {
         const { data: credits, error: credError } = await supabaseClient
             .from("creditos")
-            .select("*")
+            .select("*, cuotas_credito(*)")
             .eq("cliente_id", clientId)
             .eq("estado", "ACTIVO");
 
@@ -113,29 +113,45 @@ async function processPaymentInSupabaseDirectly(clientId, paidAmount) {
 
         let remainingPayment = Number(paidAmount);
         let totalNewDebt = 0;
+        const todayStr = new Date().toISOString().split('T')[0];
 
         for (const cred of credits) {
-            let currentDebt = Number(cred.deuda_actual || 0);
-            let paymentForThis = Math.min(remainingPayment, currentDebt);
+            let cuotas = (cred.cuotas_credito || []).sort((a, b) => a.numero_cuota - b.numero_cuota);
 
-            let newDebt = currentDebt - paymentForThis;
-            remainingPayment -= paymentForThis;
+            for (const cuota of cuotas) {
+                if (cuota.estado === 'PAGADO' || remainingPayment <= 0) continue;
 
-            let newStatus = newDebt <= 0 ? "PAGADO" : "ACTIVO";
-            let nextDueDate = cred.proximo_vencimiento;
+                let valorCuota = Number(cuota.valor_cuota || 0);
+                if (remainingPayment >= valorCuota) {
+                    remainingPayment -= valorCuota;
 
-            if (paymentForThis > 0 && newStatus === "ACTIVO") {
-                nextDueDate = calculateNextDueDate(cred.proximo_vencimiento, cred.frecuencia);
+                    await supabaseClient
+                        .from("cuotas_credito")
+                        .update({ estado: 'PAGADO', fecha_pago: todayStr })
+                        .eq("id", cuota.id);
+                } else {
+                    remainingPayment = 0;
+                }
             }
 
-            totalNewDebt += newDebt;
+            // Recalcular deuda actual de este crédito tras el pago de cuotas
+            const { data: cuotasActualizadas } = await supabaseClient
+                .from("cuotas_credito")
+                .select("*")
+                .eq("credito_id", cred.id);
+
+            const deudaRestanteCredito = (cuotasActualizadas || [])
+                .filter(c => c.estado !== 'PAGADO')
+                .reduce((sum, c) => sum + Number(c.valor_cuota || 0), 0);
+
+            let newStatus = deudaRestanteCredito <= 0 ? "PAGADO" : "ACTIVO";
+            totalNewDebt += deudaRestanteCredito;
 
             await supabaseClient
                 .from("creditos")
                 .update({
-                    deuda_actual: newDebt,
-                    estado: newStatus,
-                    proximo_vencimiento: nextDueDate
+                    deuda_actual: deudaRestanteCredito,
+                    estado: newStatus
                 })
                 .eq("id", cred.id);
         }
@@ -148,6 +164,7 @@ async function processPaymentInSupabaseDirectly(clientId, paidAmount) {
 
         if (clientData) {
             let cupoTotal = Number(clientData.cupo_total || 300000);
+            // El cupo disponible se actualiza reflejando la nueva deuda actual (sin sumar bonos inmediatos)
             let newCupoDisponible = Math.max(0, cupoTotal - totalNewDebt);
 
             await supabaseClient
