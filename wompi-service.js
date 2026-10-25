@@ -1,18 +1,16 @@
 /**
- * CUPISSA - Wompi & Supabase Integration Service
+ * CUPISSA - Wompi & Supabase Integration Service (MODO PRODUCCIÓN REAL)
  * Archivo independiente para la pasarela de pago, firmas de seguridad y cálculos
  */
 
 const WOMPI_CONFIG = {
     publicKey: 'pub_prod_q69BzlCLtdFiZQEmbQFTMX9uXwr6E4Xg',
-    // Llave Secreta de Integridad integrada
     integritySecret: 'prod_integrity_KeQNY1wOw2baT11W9qAXZ2aD82ORXnbL', 
     currency: 'COP'
 };
 
 /**
  * Genera la firma SHA-256 exigida por Wompi en Producción
- * Estructura: SHA256(Referencia + MontoEnCentavos + Moneda + LlaveIntegridad)
  */
 function generateWompiIntegritySignature(reference, amountInCents, currency, secret) {
     const rawString = `${reference}${amountInCents}${currency}${secret}`;
@@ -36,7 +34,6 @@ function calculateNextDueDate(currentDateStr, frequency) {
     } else if (frequency === 'Semanal') {
         d.setDate(d.getDate() + 7);
     } else if (frequency === 'Quincenal') {
-        // Mantiene el desfase estándar respetando el día base (ej: 5 y 20, 10 y 25, etc.)
         if (day <= 15) {
             const lastDayOfCurrentMonth = new Date(year, month, 0).getDate();
             const targetDay = Math.min(day + 15, lastDayOfCurrentMonth);
@@ -120,7 +117,6 @@ function payWithWompi({ amount, client, referencePrefix = 'CUPISSA', onSuccess, 
     const reference = `${referencePrefix}_${client.id}_${Date.now()}`;
     const cleanPhone = (client.telefono || '').replace(/\D/g, '');
 
-    // Generar la firma de integridad válida
     const integritySignature = generateWompiIntegritySignature(
         reference,
         amountInCents,
@@ -145,7 +141,7 @@ function payWithWompi({ amount, client, referencePrefix = 'CUPISSA', onSuccess, 
     });
 
     checkout.open(function (result) {
-        const transaction = result.transaction;
+        const transaction = result?.transaction;
         if (transaction && (transaction.status === 'APPROVED' || transaction.status === 'PENDING')) {
             if (onSuccess) onSuccess(transaction);
         } else {
