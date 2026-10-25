@@ -1242,7 +1242,7 @@
                 itemsText += ` | Subtotal: ${formatCOP(item.total)}`;
             });
 
-            const message = `HOLA, ME GUSTARIA AGENDAR ESTE PEDIDO\n\nREF DE PRODUCTO/S:${itemsText}\n\nDATOS DEL CLIENTE:\n• Nombre: ${nombre}\n• Teléfono: ${telefono}\n• Correo: ${correo}\n• Dirección: ${direccion}\n• Barrio: ${barrio}\n• Ciudad: ${ciudad}\n• Fecha de Entrega: ${formatDate(fechaEntrega)}\n\nTOTAL DEL PEDIDO: ${formatCOP(grandTotal)} (Anticipo sugerido: ${formatCOP(grandAnticipo)})\n\nPor favor me cotizas el valor del domicilio/envío.`;
+            const message = `Hola Cupissa, me gustaria agendar el siguiente pedido:\n\nRef de producto/s:${itemsText}\n\n*Datos de agendamiento*\n• Nombre: ${nombre}\n• Teléfono: ${telefono}\n• Correo: ${correo}\n• Dirección: ${direccion}\n• Barrio: ${barrio}\n• Ciudad: ${ciudad}\n• Fecha de Entrega: ${formatDate(fechaEntrega)}\n\nTotal del pedido: ${formatCOP(grandTotal)} (Anticipo sugerido: ${formatCOP(grandAnticipo)})\n\nPor favor me cotizas el valor del domicilio/envío.`;
 
             const encodedMessage = encodeURIComponent(message);
             const whatsappUrl = `https://wa.me/573147671380?text=${encodedMessage}`;
