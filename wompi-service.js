@@ -1,6 +1,5 @@
 /**
- * CUPISSA - Wompi & Supabase Integration Service (MODO PRODUCCIÓN REAL)
- * Archivo independiente para la pasarela de pago, firmas de seguridad y cálculos
+ * CUPISSA - Wompi & Supabase Integration Service (PRODUCCIÓN REAL CON VALIDACIÓN DE PAGO)
  */
 
 const WOMPI_CONFIG = {
@@ -18,7 +17,7 @@ function generateWompiIntegritySignature(reference, amountInCents, currency, sec
 }
 
 /**
- * Calcula la fecha de pago adaptada a cualquier frecuencia y día estándar del mes
+ * Calcula la fecha de pago adaptada a cualquier frecuencia
  */
 function calculateNextDueDate(currentDateStr, frequency) {
     if (!currentDateStr) {
@@ -95,7 +94,77 @@ function calculateMoraDetails(dueDateStr, baseAmount) {
 }
 
 /**
- * Ejecuta el Widget de Wompi con la Firma de Integridad calculada
+ * PROCESA EL DESCUENTO EN SUPABASE SOLO SI EL PAGO ES EXITOSO
+ */
+async function processPaymentInSupabaseDirectly(clientId, paidAmount) {
+    if (typeof supabaseClient === 'undefined') {
+        console.error("supabaseClient no está definido globalmente.");
+        return;
+    }
+
+    try {
+        const { data: credits, error: credError } = await supabaseClient
+            .from("creditos")
+            .select("*")
+            .eq("cliente_id", clientId)
+            .eq("estado", "ACTIVO");
+
+        if (credError || !credits || credits.length === 0) return;
+
+        let remainingPayment = Number(paidAmount);
+        let totalNewDebt = 0;
+
+        for (const cred of credits) {
+            let currentDebt = Number(cred.deuda_actual || 0);
+            let paymentForThis = Math.min(remainingPayment, currentDebt);
+
+            let newDebt = currentDebt - paymentForThis;
+            remainingPayment -= paymentForThis;
+
+            let newStatus = newDebt <= 0 ? "PAGADO" : "ACTIVO";
+            let nextDueDate = cred.proximo_vencimiento;
+
+            if (paymentForThis > 0 && newStatus === "ACTIVO") {
+                nextDueDate = calculateNextDueDate(cred.proximo_vencimiento, cred.frecuencia);
+            }
+
+            totalNewDebt += newDebt;
+
+            await supabaseClient
+                .from("creditos")
+                .update({
+                    deuda_actual: newDebt,
+                    estado: newStatus,
+                    proximo_vencimiento: nextDueDate
+                })
+                .eq("id", cred.id);
+        }
+
+        const { data: clientData } = await supabaseClient
+            .from("clientes")
+            .select("*")
+            .eq("id", clientId)
+            .single();
+
+        if (clientData) {
+            let cupoTotal = Number(clientData.cupo_total || 300000);
+            let newCupoDisponible = Math.max(0, cupoTotal - totalNewDebt);
+
+            await supabaseClient
+                .from("clientes")
+                .update({
+                    cupo_disponible: newCupoDisponible
+                })
+                .eq("id", clientId);
+        }
+
+    } catch (err) {
+        console.error("Error aplicando el descuento en Supabase:", err);
+    }
+}
+
+/**
+ * Ejecuta el Widget de Wompi validando el estado APPROVED real
  */
 function payWithWompi({ amount, client, referencePrefix = 'CUPISSA', onSuccess, onError }) {
     if (!amount || amount <= 0) {
@@ -140,11 +209,16 @@ function payWithWompi({ amount, client, referencePrefix = 'CUPISSA', onSuccess, 
         }
     });
 
-    checkout.open(function (result) {
+    checkout.open(async function (result) {
         const transaction = result?.transaction;
-        if (transaction && (transaction.status === 'APPROVED' || transaction.status === 'PENDING')) {
+        
+        // VALIDACIÓN ESTRICTA: Solo si la transacción está APROBADA se descuenta y procesa
+        if (transaction && transaction.status === 'APPROVED') {
+            console.log("Pago APROBADO por Wompi. Procesando descuento...", transaction);
+            await processPaymentInSupabaseDirectly(client.id, amount);
             if (onSuccess) onSuccess(transaction);
         } else {
+            console.warn("Pago rechazado, cancelado o no aprobado:", transaction?.status);
             if (onError) onError(transaction);
         }
     });
