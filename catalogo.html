@@ -67,7 +67,7 @@
                     </a>
                 </div>
 
-                <!-- BUSCADOR INTELIGENTE (OPTIMIZADO Y SIEMPRE VISIBLE EN CELULARES) -->
+                <!-- BUSCADOR INTELIGENTE / REORGANIZADOR -->
                 <div class="flex-1 max-w-xl mx-1 sm:mx-6">
                     <div class="relative w-full">
                         <span class="absolute inset-y-0 left-0 pl-2.5 sm:pl-3.5 flex items-center text-pink-600 text-xs sm:text-sm">
@@ -100,7 +100,7 @@
         </div>
     </header>
 
-    <!-- ZONA DE MUNDOS, TEMPORADAS, CATEGORÍAS Y SUBCATEGORÍAS (MÁS COMPACTA Y ALTA) -->
+    <!-- ZONA DE MUNDOS, TEMPORADAS, CATEGORÍAS Y SUBCATEGORÍAS -->
     <div class="sticky top-16 sm:top-20 z-30 bg-slate-50/95 backdrop-blur-md pt-2 sm:pt-3 pb-1 sm:pb-2 border-b border-slate-200/60 shadow-xs">
         <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 space-y-2 sm:space-y-3">
             
@@ -481,7 +481,6 @@
             window.addEventListener('scroll', () => {
                 if (isLoadingMore) return;
                 
-                // Excluir la altura del footer del cálculo del scroll infinito
                 const footerHeight = document.querySelector('footer') ? document.querySelector('footer').offsetHeight : 0;
                 const triggerPoint = document.body.offsetHeight - footerHeight - 350;
 
@@ -507,7 +506,6 @@
             });
         };
 
-        // FUNCIÓN MEZCLADORA ALEATORIA (FISHER-YATES SHUFFLE)
         function shuffleArray(array) {
             for (let i = array.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
@@ -516,7 +514,6 @@
             return array;
         }
 
-        // DESCARGA DIRECTA DE SUPABASE Y ORDEN CAMBIANTE ALEATORIO
         async function fetchCatalogProducts() {
             let allFetched = [];
 
@@ -545,7 +542,6 @@
             updateSEOStructuredData();
         }
 
-        // NORMALIZADOR FLEXIBLE Y SEGURO DE PRODUCTOS
         function normalizeProduct(p) {
             let fotosParsed = [];
             if (p.fotos) {
@@ -583,7 +579,6 @@
             };
         }
 
-        // GENERADOR DE DATOS ESTRUCTURADOS JSON-LD PARA INDEXACIÓN EN GOOGLE IMÁGENES
         function updateSEOStructuredData() {
             if (!rawProducts || rawProducts.length === 0) return;
             
@@ -624,7 +619,6 @@
                 if (p.subcategoria) subcategoriasSet.add(p.subcategoria);
             });
 
-            // 1. MUNDOS
             const mundosContainer = document.getElementById('mundos-container');
             const btnTodos = document.getElementById('btn-mundo-todos');
             mundosContainer.innerHTML = '';
@@ -639,7 +633,6 @@
                 mundosContainer.appendChild(btn);
             });
 
-            // 2. TEMPORADAS
             const tempContainer = document.getElementById('temporadas-container');
             const btnTodasTemp = document.getElementById('btn-temp-todas');
             tempContainer.innerHTML = '';
@@ -654,7 +647,6 @@
                 tempContainer.appendChild(btn);
             });
 
-            // 3. CATEGORÍAS
             const catContainer = document.getElementById('categorias-container');
             const btnTodasCat = document.getElementById('btn-cat-todas');
             catContainer.innerHTML = '';
@@ -669,7 +661,6 @@
                 catContainer.appendChild(btn);
             });
 
-            // 4. SUBCATEGORÍAS
             const subcatContainer = document.getElementById('subcategorias-container');
             const btnTodasSubcat = document.getElementById('btn-subcat-todas');
             subcatContainer.innerHTML = '';
@@ -738,7 +729,7 @@
             applyFiltersAndSearch();
         }
 
-        // ALGORITMO DE LEVENSHTEIN PARA BÚSQUEDA TOLERANTE A ERRORES / ORTOGRAFÍA
+        // DISTANCIA DE LEVENSHTEIN PARA TOLERANCIA ORTOGRÁFICA Y DE TIPEADO
         function getLevenshteinDistance(a, b) {
             if (a.length === 0) return b.length;
             if (b.length === 0) return a.length;
@@ -760,33 +751,63 @@
             return matrix[b.length][a.length];
         }
 
-        function matchesSearchQuery(product, query) {
-            if (!query) return true;
+        // MOTOR DE PUNTUACIÓN DE COINCIDENCIA (SIN EXCLUIR NADA: TODOS TIENEN PUNTAJE Y SE ORDENAN DE MAYOR A MENOR)
+        function calculateProductRelevance(product, query) {
+            if (!query) return 0;
             const cleanQuery = query.toLowerCase().trim();
-            const fullText = `${product.nombre} ${product.categoria} ${product.subcategoria} ${product.descripcion} ${product.mundo} ${product.temporada}`.toLowerCase();
-            
-            if (fullText.includes(cleanQuery)) return true;
-
             const queryWords = cleanQuery.split(/\s+/).filter(Boolean);
-            const productWords = fullText.split(/[\s,\.-]+/).filter(Boolean);
+            
+            const nombreLower = (product.nombre || '').toLowerCase();
+            const catLower = (product.categoria || '').toLowerCase();
+            const subcatLower = (product.subcategoria || '').toLowerCase();
+            const descLower = (product.descripcion || '').toLowerCase();
+            const mundoLower = (product.mundo || '').toLowerCase();
+            const tempLower = (product.temporada || '').toLowerCase();
 
-            return queryWords.every(qWord => {
-                if (qWord.length <= 2) {
-                    return productWords.some(pWord => pWord.includes(qWord));
+            let score = 0;
+
+            // 1. Si la frase completa buscada está exactamente en el nombre del producto
+            if (nombreLower.includes(cleanQuery)) {
+                score += 500;
+            }
+
+            // 2. Coincidencia por palabras individuales
+            queryWords.forEach(qWord => {
+                const nameWords = nombreLower.split(/[\s,\.-]+/).filter(Boolean);
+
+                // Palabra exacta en el nombre
+                if (nameWords.some(nWord => nWord === qWord)) {
+                    score += 200;
+                } 
+                // Subcadena dentro del nombre (Ejemplo: "Moana" dentro de "Conjunto Tutu de Moana")
+                else if (nombreLower.includes(qWord)) {
+                    score += 150;
                 }
-                return productWords.some(pWord => {
-                    if (pWord.includes(qWord) || qWord.includes(pWord)) return true;
-                    const maxAllowedDist = qWord.length <= 4 ? 1 : 2;
-                    return getLevenshteinDistance(qWord, pWord) <= maxAllowedDist;
-                });
+                // Coincidencia con errores ortográficos/tipeado en el nombre
+                else if (nameWords.some(nWord => getLevenshteinDistance(qWord, nWord) <= (qWord.length <= 4 ? 1 : 2))) {
+                    score += 80;
+                }
+
+                // Coincidencia en Categoría, Subcategoría, Mundo o Temporada
+                if (catLower.includes(qWord) || subcatLower.includes(qWord) || mundoLower.includes(qWord) || tempLower.includes(qWord)) {
+                    score += 50;
+                }
+
+                // Coincidencia en Descripción
+                if (descLower.includes(qWord)) {
+                    score += 20;
+                }
             });
+
+            return score;
         }
 
-        // APLICAR FILTROS Y BÚSQUEDA INTELIGENTE
+        // APLICAR FILTROS Y BUSCADOR REORGANIZADOR COMPLETO
         function applyFiltersAndSearch() {
             const query = (document.getElementById('smart-search-input').value || '').trim();
 
-            filteredProducts = rawProducts.filter(p => {
+            // 1. Filtrar primero por Mundo, Temporada, Categoría y Subcategoría
+            let results = rawProducts.filter(p => {
                 const pMundo = (p.mundo || '').toString().toUpperCase().trim();
                 const pTemp = (p.temporada || '').toString().toUpperCase().trim();
                 const pCat = (p.categoria || '').toString().toUpperCase().trim();
@@ -797,12 +818,19 @@
                 const matchCat = activeCategoria === 'TODAS' || pCat === activeCategoria.toString().toUpperCase().trim();
                 const matchSubcat = activeSubcategoria === 'TODAS' || pSubcat === activeSubcategoria.toString().toUpperCase().trim();
                 
-                if (!matchMundo || !matchTemp || !matchCat || !matchSubcat) return false;
-                if (!query) return true;
-
-                return matchesSearchQuery(p, query);
+                return matchMundo && matchTemp && matchCat && matchSubcat;
             });
 
+            // 2. Si el usuario escribe algo en el buscador, REORGANIZAR TODO EL CATÁLOGO de mayor a menor coincidencia
+            if (query) {
+                results = results.map(p => {
+                    return { product: p, score: calculateProductRelevance(p, query) };
+                })
+                .sort((a, b) => b.score - a.score) // Ordena desde el que más coincide hasta el que menos
+                .map(item => item.product);
+            }
+
+            filteredProducts = results;
             renderProductsGrid();
         }
 
@@ -815,7 +843,7 @@
             const endMsg = document.getElementById('scroll-end-msg');
 
             if (filteredProducts.length === 0) {
-                grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 font-semibold">No hay productos registrados en esta sección o con coincidencia para tu búsqueda.</div>`;
+                grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-400 font-semibold">No hay productos registrados en esta sección.</div>`;
                 statusContainer.classList.add('hidden');
                 return;
             }
