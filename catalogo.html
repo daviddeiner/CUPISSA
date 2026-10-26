@@ -460,6 +460,8 @@
 
         let rawProducts = [];
         let filteredProducts = [];
+        let currentMatches = [];
+        let currentNonMatches = [];
         let displayLimit = 12;
         let isLoadingMore = false;
         let activeMundo = 'TODOS';
@@ -751,7 +753,7 @@
             return matrix[b.length][a.length];
         }
 
-        // MOTOR DE PUNTUACIÓN DE COINCIDENCIA (SIN EXCLUIR NADA: TODOS TIENEN PUNTAJE Y SE ORDENAN DE MAYOR A MENOR)
+        // MOTOR DE PUNTUACIÓN DE COINCIDENCIA
         function calculateProductRelevance(product, query) {
             if (!query) return 0;
             const cleanQuery = query.toLowerCase().trim();
@@ -766,34 +768,27 @@
 
             let score = 0;
 
-            // 1. Si la frase completa buscada está exactamente en el nombre del producto
             if (nombreLower.includes(cleanQuery)) {
                 score += 500;
             }
 
-            // 2. Coincidencia por palabras individuales
             queryWords.forEach(qWord => {
                 const nameWords = nombreLower.split(/[\s,\.-]+/).filter(Boolean);
 
-                // Palabra exacta en el nombre
                 if (nameWords.some(nWord => nWord === qWord)) {
                     score += 200;
                 } 
-                // Subcadena dentro del nombre (Ejemplo: "Moana" dentro de "Conjunto Tutu de Moana")
                 else if (nombreLower.includes(qWord)) {
                     score += 150;
                 }
-                // Coincidencia con errores ortográficos/tipeado en el nombre
                 else if (nameWords.some(nWord => getLevenshteinDistance(qWord, nWord) <= (qWord.length <= 4 ? 1 : 2))) {
                     score += 80;
                 }
 
-                // Coincidencia en Categoría, Subcategoría, Mundo o Temporada
                 if (catLower.includes(qWord) || subcatLower.includes(qWord) || mundoLower.includes(qWord) || tempLower.includes(qWord)) {
                     score += 50;
                 }
 
-                // Coincidencia en Descripción
                 if (descLower.includes(qWord)) {
                     score += 20;
                 }
@@ -802,11 +797,10 @@
             return score;
         }
 
-        // APLICAR FILTROS Y BUSCADOR REORGANIZADOR COMPLETO
+        // APLICAR FILTROS Y BUSCADOR CON SEPARACIÓN DE COINCIDENTES Y NO COINCIDENTES
         function applyFiltersAndSearch() {
             const query = (document.getElementById('smart-search-input').value || '').trim();
 
-            // 1. Filtrar primero por Mundo, Temporada, Categoría y Subcategoría
             let results = rawProducts.filter(p => {
                 const pMundo = (p.mundo || '').toString().toUpperCase().trim();
                 const pTemp = (p.temporada || '').toString().toUpperCase().trim();
@@ -821,16 +815,23 @@
                 return matchMundo && matchTemp && matchCat && matchSubcat;
             });
 
-            // 2. Si el usuario escribe algo en el buscador, REORGANIZAR TODO EL CATÁLOGO de mayor a menor coincidencia
             if (query) {
-                results = results.map(p => {
+                let scoredResults = results.map(p => {
                     return { product: p, score: calculateProductRelevance(p, query) };
-                })
-                .sort((a, b) => b.score - a.score) // Ordena desde el que más coincide hasta el que menos
-                .map(item => item.product);
+                });
+
+                scoredResults.sort((a, b) => b.score - a.score);
+
+                currentMatches = scoredResults.filter(item => item.score > 0).map(item => item.product);
+                currentNonMatches = scoredResults.filter(item => item.score === 0).map(item => item.product);
+
+                filteredProducts = [...currentMatches, ...currentNonMatches];
+            } else {
+                currentMatches = results;
+                currentNonMatches = [];
+                filteredProducts = results;
             }
 
-            filteredProducts = results;
             renderProductsGrid();
         }
 
@@ -849,8 +850,23 @@
             }
 
             const productsToShow = filteredProducts.slice(0, displayLimit);
+            const query = (document.getElementById('smart-search-input').value || '').trim();
 
-            productsToShow.forEach(prod => {
+            productsToShow.forEach((prod, index) => {
+                // Insertar línea separadora antes de los productos no coincidentes si hay una búsqueda activa
+                if (query && currentMatches.length > 0 && currentNonMatches.length > 0) {
+                    if (index === currentMatches.length) {
+                        const separator = document.createElement('div');
+                        separator.className = "col-span-full my-4 flex items-center justify-center";
+                        separator.innerHTML = `
+                            <div class="flex-grow border-t border-slate-300"></div>
+                            <span class="flex-shrink mx-4 text-xs font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-4 py-1.5 rounded-full shadow-xs">Mas productos del catalogo</span>
+                            <div class="flex-grow border-t border-slate-300"></div>
+                        `;
+                        grid.appendChild(separator);
+                    }
+                }
+
                 const isFav = favorites.some(f => f.id === prod.id);
                 const mainFoto = prod.fotos && prod.fotos.length > 0 ? prod.fotos[0] : 'https://via.placeholder.com/400x400?text=Cupissa';
 
@@ -1305,6 +1321,7 @@
                     container.appendChild(card);
                 });
             }
+            document.getElementById('modal-favorites').classList.add('hidden'); // Fix typo if any or keep clean
             document.getElementById('modal-favorites').classList.remove('hidden');
         }
 
