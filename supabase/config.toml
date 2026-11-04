@@ -1,0 +1,2 @@
+[functions.switf-endpoint]
+verify_jwt = false
