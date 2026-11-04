@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CUPISSA - Catálogo</title>
+    <link rel="canonical" href="https://app.cupissa.com/catalogo/">
+    
+    <link rel="icon" type="image/png" sizes="64x64" href="/catalogo/assets/images/favicon.png">
+    <link rel="apple-touch-icon" href="/catalogo/assets/images/app-icon-180.png">
+    <link rel="manifest" href="/catalogo/manifest.webmanifest">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="CUPISSA">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/catalogo/assets/js/01-tailwind-config.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Supabase JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Contenedor dinámico para Datos Estructurados (SEO Google Images) -->
+    <script id="seo-schema-script" type="application/ld+json"></script>
+
+    <link rel="stylesheet" href="/catalogo/assets/css/catalogo.css">
+<script>
+(function(){
+  var path=window.location.pathname;
+  if(/\/index\.html$/i.test(path)){
+    var clean=path.replace(/index\.html$/i,'');
+    window.history.replaceState(null,document.title,clean+window.location.search+window.location.hash);
+  }
+})();
+</script>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-800 font-sans">
+
+    <!-- HEADER / NAV -->
+    <header class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 sm:h-20 gap-1.5 sm:gap-4">
+                
+                <!-- LOGO -->
+                <div class="flex flex-col items-center justify-center shrink-0 brand-install-wrap">
+                    <a href="/catalogo/" class="leading-none">
+                        <img src="/catalogo/assets/images/logo.png" alt="CUPISSA - Catálogo de productos" class="h-7 sm:h-10 w-auto object-contain">
+                    </a>
+                    <button id="install-app-button" type="button" onclick="handleInstallApp()" class="install-app-button" aria-label="Descargar aplicación CUPISSA">
+                        <i class="fa-solid fa-download" aria-hidden="true"></i><span>Descargar aplicación</span>
+                    </button>
+                </div>
+
+                <!-- BUSCADOR INTELIGENTE / REORGANIZADOR -->
+                <div class="flex-1 max-w-xl mx-1 sm:mx-6">
+                    <div class="relative w-full">
+                        <span class="absolute inset-y-0 left-0 pl-2.5 sm:pl-3.5 flex items-center text-pink-600 text-xs sm:text-sm">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="smart-search-input" onkeyup="handleSmartSearch()" placeholder="Buscar producto..." class="w-full pl-8 sm:pl-10 pr-2.5 sm:pr-4 py-1.5 sm:py-2.5 rounded-full bg-slate-50 sm:bg-slate-100 border border-pink-300 sm:border-slate-200 text-slate-900 text-[11px] sm:text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 font-semibold placeholder-slate-400 transition-all shadow-xs">
+                    </div>
+                </div>
+
+                <!-- BOTONES RÁPIDOS Y ACCIONES -->
+                <div class="desktop-header-actions flex items-center space-x-1 sm:space-x-3 shrink-0">
+                    <!-- PERFIL: página independiente en escritorio -->
+                    <button type="button" onclick="goToProfilePage()" aria-label="Abrir mi perfil" title="Mi Perfil" class="hidden md:flex items-center space-x-1.5 px-3 py-2 bg-slate-50 hover:bg-pink-50 fuchsia-text font-bold rounded-full text-xs transition-colors">
+                        <i class="fa-regular fa-user"></i>
+                        <span>Perfil</span>
+                    </button>
+
+                    <a href="/portal-pagos" class="hidden md:flex items-center space-x-1.5 px-4 py-2 bg-pink-50 hover:bg-pink-100 fuchsia-text font-bold rounded-full text-xs transition-colors" aria-label="Ir al Portal de Pagos">
+                        <i class="fa-solid fa-wallet"></i>
+                        <span>Portal de Pagos</span>
+                    </a>
+
+                    <!-- FAVORITOS -->
+                    <button onclick="openFavoritesModal()" class="relative p-1.5 sm:p-2.5 text-slate-600 hover:text-pink-600 transition-colors">
+                        <i class="fa-regular fa-heart text-lg sm:text-xl"></i>
+                        <span id="fav-badge-count" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[9px] sm:text-[10px] font-black w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shadow-sm">0</span>
+                    </button>
+
+                    <!-- CARRITO -->
+                    <button id="desktop-cart-trigger" onclick="openCartModal()" class="relative p-1.5 sm:p-2.5 text-slate-600 hover:text-pink-600 transition-colors">
+                        <i class="fa-solid fa-bag-shopping text-lg sm:text-xl"></i>
+                        <span id="cart-badge-count" class="absolute -top-1 -right-1 bg-pink-600 text-white text-[9px] sm:text-[10px] font-black w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center shadow-sm">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- AVISO FIJO: permanece visible mientras se recorre el catálogo -->
+    <div class="catalog-promo-banner bg-pink-50 border border-pink-200 text-pink-900 px-3 py-2.5 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold text-center shadow-xs leading-tight">
+        <strong>Somos fabricantes y hacemos productos a tu gusto. ¿Buscas algo fuera del catálogo? Cotízalo por WhatsApp: <a href="https://wa.me/573147671380" target="_blank" rel="noopener" class="font-black underline text-pink-700 hover:text-pink-900">3147671380</a></strong>
+    </div>
+
+    <!-- ORGANIZACIÓN RESPONSIVE DEL CATÁLOGO -->
+    <div class="catalog-layout-shell">
+        <div id="mobile-filter-backdrop" onclick="closeMobileFilters()" aria-hidden="true"></div>
+        <div class="catalog-layout">
+            <aside id="catalog-filter-sidebar" aria-label="Filtros del catálogo">
+                <!-- En escritorio, todos los filtros se muestran como listas desplegables. -->
+                <section class="filter-group filter-dropdown-group filter-worlds-group">
+                    <button type="button" class="filter-dropdown-toggle" onclick="toggleCatalogDropdown(this)" aria-expanded="false" aria-controls="mundos-container">
+                        <span class="filter-group-title">MUNDOS</span><i class="fa-solid fa-chevron-down filter-dropdown-chevron"></i>
+                    </button>
+                    <div class="flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto custom-scrollbar pb-1.5 filter-options-list" id="mundos-container">
+                        <button onclick="filterByMundo('TODOS')" id="btn-mundo-todos" class="px-2.5 py-1 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all bg-pink-600 text-white flex items-center space-x-1.5 shrink-0 shadow-sm">
+                            <i class="fa-solid fa-border-all text-[9px] sm:text-xs"></i><span>TODOS LOS MUNDOS</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Se mantienen los identificadores y las funciones originales de cada filtro. -->
+                <div id="catalog-filter-sections" class="filter-sections-card">
+                    <button type="button" class="mobile-filter-close" onclick="closeMobileFilters()" aria-label="Cerrar filtros">
+                        <span>Filtros</span><i class="fa-solid fa-xmark"></i>
+                    </button>
+
+                    <section class="filter-group filter-dropdown-group">
+                        <button type="button" class="filter-dropdown-toggle" onclick="toggleCatalogDropdown(this)" aria-expanded="false" aria-controls="temporadas-container">
+                            <span class="filter-group-title">TEMPORADAS</span><i class="fa-solid fa-chevron-down filter-dropdown-chevron"></i>
+                        </button>
+                        <div class="flex items-center gap-1.5 text-[10px] sm:text-xs filter-options-list">
+                            <div class="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar" id="temporadas-container">
+                                <button onclick="filterByTemporada('TODAS')" id="btn-temp-todas" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">Todas</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="filter-group filter-dropdown-group">
+                        <button type="button" class="filter-dropdown-toggle" onclick="toggleCatalogDropdown(this)" aria-expanded="false" aria-controls="categorias-container">
+                            <span class="filter-group-title">CATEGORÍAS</span><i class="fa-solid fa-chevron-down filter-dropdown-chevron"></i>
+                        </button>
+                        <div class="flex items-center gap-1.5 text-[10px] sm:text-xs filter-options-list">
+                            <div class="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar" id="categorias-container">
+                                <button onclick="filterByCategoria('TODAS')" id="btn-cat-todas" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">Todas</button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="filter-group filter-dropdown-group">
+                        <button type="button" class="filter-dropdown-toggle" onclick="toggleCatalogDropdown(this)" aria-expanded="false" aria-controls="subcategorias-container">
+                            <span class="filter-group-title">SUBCATEGORÍAS</span><i class="fa-solid fa-chevron-down filter-dropdown-chevron"></i>
+                        </button>
+                        <div class="flex items-center gap-1.5 text-[10px] sm:text-xs filter-options-list">
+                            <div class="flex items-center space-x-1.5 overflow-x-auto custom-scrollbar" id="subcategorias-container">
+                                <button onclick="filterBySubcategoria('TODAS')" id="btn-subcat-todas" class="px-2 py-1 sm:px-3 sm:py-1.5 rounded-md sm:rounded-lg font-bold text-white bg-pink-600 transition-all shrink-0">Todas</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+
+            <div class="catalog-content-column">
+                <!-- MAIN CONTENT -->
+                <main id="catalog-main" class="flex-1 min-w-0 w-full p-3 sm:p-6 lg:p-8 space-y-4 sm:space-y-6">
+                    <div class="catalog-title-row flex items-center justify-between">
+                        <h1 class="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">Catálogo Cupissa</h1>
+                    </div>
+
+                    <section id="season-featured" class="hidden season-featured-panel" aria-label="Destacados de la temporada">
+                        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-4">
+                            <div><p class="season-featured-eyebrow">Selección CUPISSA</p><h2 class="season-featured-title">DESTACADOS DE LA TEMPORADA <span id="season-featured-name"></span></h2></div>
+                            <span class="season-featured-count">5 productos seleccionados</span>
+                        </div>
+                        <div id="season-featured-grid" class="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-4"></div>
+                    </section>
+
+                    <!-- GRILLA DE PRODUCTOS -->
+                    <div id="products-grid" class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-6">
+                        <div class="col-span-full py-16 text-center text-slate-500 font-bold flex flex-col items-center justify-center space-y-3">
+                            <i class="fa-solid fa-circle-notch fa-spin text-pink-600 text-3xl"></i>
+                            <span class="tracking-wider uppercase text-xs sm:text-sm">CARGANDO PRODUCTOS...</span>
+                        </div>
+                    </div>
+
+                    <!-- SENTINELA DE SCROLL INFINITO: carga más productos antes de alcanzar el final. -->
+                    <div id="scroll-status-container" class="catalog-infinite-sentinel" aria-hidden="true">
+                        <div id="scroll-loading-msg" class="hidden flex items-center justify-center space-x-2 text-pink-600 font-black text-xs sm:text-sm uppercase tracking-wider">
+                            <i class="fa-solid fa-spinner fa-spin"></i><span>CARGANDO MÁS PRODUCTOS...</span>
+                        </div>
+                        <div id="scroll-end-msg" class="hidden text-slate-400 font-black text-xs sm:text-sm uppercase tracking-wider py-2">
+                            
+                        </div>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <div id="install-app-help" class="fixed inset-0 z-[120] hidden items-center justify-center bg-slate-950/55 backdrop-blur-sm p-4" role="dialog" aria-modal="true" aria-labelledby="install-app-title">
+        <div class="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+            <div class="flex items-center gap-3 mb-4">
+                <img src="/catalogo/assets/images/app-icon-180.png" alt="Icono CUPISSA" class="w-14 h-14 rounded-2xl border border-slate-100">
+                <div><h2 id="install-app-title" class="font-black text-slate-900">Instala CUPISSA</h2><p class="text-xs text-slate-500">Lleva la tienda a la pantalla de inicio.</p></div>
+            </div>
+            <div id="install-app-help-text" class="text-sm text-slate-600 leading-relaxed space-y-2"></div>
+            <button type="button" onclick="closeInstallAppHelp()" class="mt-5 w-full rounded-xl bg-pink-600 px-4 py-3 text-sm font-black text-white">Entendido</button>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="bg-[#0b0f19] text-slate-300 pt-12 sm:pt-16 pb-8 border-t border-slate-800 mt-8 sm:mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8 pb-12 border-b border-slate-800 text-xs">
+            <div class="space-y-3">
+                <a href="/catalogo/">
+                    <img src="/catalogo/assets/images/logo.png" alt="CUPISSA - Marca Registrada" class="h-10 w-auto object-contain brightness-0 invert">
+                </a>
+                <p class="text-slate-400 leading-relaxed">
+                    Soluciones integrales en comercio, alquiler, fabricación a medida y financiación directa, con cobertura en toda Colombia.
+                </p>
+            </div>
+            <div class="space-y-3">
+                <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Atención al Cliente</h4>
+                <div class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-solid fa-envelope text-blue-400"></i>
+                    <span>contactocupissa@gmail.com</span>
+                </div>
+                <div class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-brands fa-whatsapp text-emerald-400"></i>
+                    <span>WhatsApp: 3147671380</span>
+                </div>
+                <div class="flex items-center space-x-2 text-slate-400">
+                    <i class="fa-solid fa-clock text-amber-400"></i>
+                    <span>Horario: Recepción 24h</span>
+                </div>
+            </div>
+            <div class="space-y-3">
+                <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Términos y Políticas</h4>
+                <ul class="space-y-2.5">
+                    <li><a href="/terminos-y-condiciones/" class="text-slate-400 hover:text-white transition-colors">Términos y Condiciones Generales</a></li>
+                    <li><a href="/politica-de-datos-personales/" class="text-slate-400 hover:text-white transition-colors">Política de Tratamiento de Datos Personales</a></li>
+                    <li><a href="/politica-de-compras-y-garantias/" class="text-slate-400 hover:text-white transition-colors">Política de Compras, Pagos, Anticipos, Envíos, Cambios, Devoluciones y Garantías</a></li>
+                    <li><a href="/credito-cupissa/" class="text-slate-400 hover:text-white transition-colors">Términos y Condiciones de Crédito Cupissa</a></li>
+                    <li><a href="/politica-y-condiciones-de-alquileres/" class="text-slate-400 hover:text-white transition-colors">Política y Condiciones de Alquileres</a></li>
+                </ul>
+            </div>
+            <div class="space-y-3">
+                <h4 class="font-bold text-white uppercase tracking-wider text-sm mb-4">Medios de Pago</h4>
+                <div class="space-y-2 text-slate-400 font-medium">
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-mobile-screen fuchsia-text"></i><span>NEQUI</span></div>
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-credit-card text-blue-400"></i><span>WOMPI</span></div>
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-bolt text-yellow-400"></i><span>ADDI</span></div>
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-shield-halved fuchsia-text"></i><span>CRÉDITOS CUPISSA</span></div>
+                    <div class="flex items-center space-x-2"><i class="fa-solid fa-money-bill-wave text-emerald-400"></i><span>EFECTIVO</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex flex-col sm:flex-row items-center justify-between text-slate-500 text-[11px] gap-4">
+            <div>© 2026 CUPISSA S.A.S. Todos los derechos reservados.</div>
+            <div>Diseñado y Desarrollado por <span class="fuchsia-text font-bold">Deiner Gonzalez</span></div>
+        </div>
+    </footer>
+
+    <!-- NAVEGACIÓN INFERIOR TIPO APLICACIÓN (solo celular) -->
+    <nav id="mobile-app-nav" aria-label="Navegación principal del catálogo">
+        <div class="mobile-filter-row">
+            <button type="button" id="mobile-filter-toggle" onclick="toggleMobileFilters()" aria-controls="catalog-filter-sections" aria-expanded="false">
+                <i class="fa-solid fa-sliders"></i><span>Filtros</span>
+            </button>
+        </div>
+        <div class="mobile-nav-actions">
+            <button type="button" class="mobile-nav-item active" data-mobile-section="home" onclick="goToCatalogHome()" aria-label="Inicio" aria-current="page">
+                <i class="fa-solid fa-house"></i><span>Inicio</span>
+            </button>
+            <button type="button" class="mobile-nav-item" data-mobile-section="favorites" onclick="openFavoritesModal()" aria-label="Favoritos">
+                <span class="mobile-nav-icon-wrap"><i class="fa-regular fa-heart"></i><span id="mobile-fav-badge-count" class="mobile-nav-badge">0</span></span>
+                <span>Favoritos</span>
+            </button>
+            <button type="button" id="mobile-cart-trigger" class="mobile-nav-item" data-mobile-section="cart" onclick="openCartModal()" aria-label="Carrito">
+                <span class="mobile-nav-icon-wrap"><i class="fa-solid fa-bag-shopping"></i><span id="mobile-cart-badge-count" class="mobile-nav-badge">0</span></span>
+                <span>Carrito</span>
+            </button>
+            <button type="button" class="mobile-nav-item" data-mobile-section="profile" onclick="openProfileModal()" aria-label="Abrir Perfil" title="Abrir Perfil aquí mismo">
+                <i class="fa-regular fa-user"></i><span>Perfil</span>
+            </button>
+            <button type="button" class="mobile-nav-item mobile-nav-portal" data-mobile-section="portal" onclick="openPortalModal()" aria-label="Portal de Pagos" title="Abrir Portal de Pagos aquí mismo">
+                <i class="fa-solid fa-wallet"></i><span>Portal</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- PORTAL DE PAGOS: se muestra sobre el catálogo sin navegar a otra página. -->
+    <div id="modal-portal" class="portal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="portal-overlay-title">
+        <div class="portal-overlay-shell">
+            <div class="portal-overlay-header">
+                <div class="flex items-center gap-2 min-w-0">
+                    <i class="fa-solid fa-wallet fuchsia-text"></i>
+                    <strong id="portal-overlay-title" class="truncate">Portal de Pagos CUPISSA</strong>
+                </div>
+                <button type="button" onclick="closePortalModal()" class="portal-overlay-close" aria-label="Cerrar Portal de Pagos">
+                    <span>Volver al catálogo</span><i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <iframe id="portal-frame" title="Portal de Pagos CUPISSA" data-src="/portal-pagos?embedded=1" loading="lazy"></iframe>
+        </div>
+    </div>
+
+    <!-- PERFIL DE CLIENTE: ventana integrada en móvil, sin salir del catálogo. -->
+    <div id="modal-profile" class="profile-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="profile-overlay-title">
+        <div class="profile-overlay-shell">
+            <div class="profile-overlay-header">
+                <div class="flex items-center gap-2 min-w-0">
+                    <i class="fa-regular fa-user fuchsia-text"></i>
+                    <strong id="profile-overlay-title" class="truncate">Mi Perfil CUPISSA</strong>
+                </div>
+                <button type="button" onclick="closeProfileModal()" class="profile-overlay-close" aria-label="Volver al catálogo">
+                    <i class="fa-solid fa-arrow-left"></i><span>Volver al catálogo</span>
+                </button>
+            </div>
+            <iframe id="profile-frame" title="Mi Perfil CUPISSA" data-src="/perfil?embedded=1" loading="lazy"></iframe>
+        </div>
+    </div>
+
+    <!-- MODAL 1: OPCIONES PRODUCTO -->
+    <div id="modal-product-options" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="product-modal-inner bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 space-y-5 max-h-[90vh] overflow-y-auto custom-scrollbar relative">
+            <button onclick="closeOptionsModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 text-slate-400 hover:text-slate-600 hover:bg-slate-200 flex items-center justify-center transition-all z-10">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="product-modal-grid grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="product-modal-media space-y-3">
+                    <div class="relative rounded-2xl overflow-hidden bg-slate-100 aspect-square border border-slate-100 group">
+                        <img id="opt-modal-img" src="" alt="Producto Cupissa" class="w-full h-full object-cover">
+                        <div class="absolute top-3 left-3 flex flex-wrap gap-1" id="opt-modal-badges"></div>
+                        <button onclick="openFullImageModal()" class="absolute bottom-3 right-3 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white rounded-xl text-[11px] font-bold backdrop-blur-md shadow-md transition-all flex items-center space-x-1.5 z-10">
+                            <i class="fa-solid fa-expand text-xs"></i>
+                            <span>Ver foto completa</span>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-1" id="opt-modal-thumbs"></div>
+                </div>
+                <div class="space-y-4 flex flex-col justify-between">
+                    <div>
+                        <span id="opt-modal-subcat" class="text-[11px] font-black uppercase text-pink-600 tracking-wider">TEXTIL</span>
+                        <h2 id="opt-modal-title" class="text-xl font-black text-slate-900 uppercase tracking-tight mt-0.5">NOMBRE PRODUCTO</h2>
+                        <span id="opt-modal-ref" class="text-[10px] text-slate-400 font-bold block mt-0.5">Ref: CUP-0000</span>
+
+                        <div id="wrapper-descripcion" class="mt-2 text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed hidden">
+                            <p id="opt-modal-desc"></p>
+                        </div>
+
+                        <div id="wrapper-modalidad" class="mt-3 space-y-1">
+                            <label class="block text-xs font-bold text-slate-700 uppercase">Modalidad *</label>
+                            <div class="grid grid-cols-2 gap-2" id="modalidad-options-container">
+                                <label id="lbl-mod-venta" class="flex items-center justify-center space-x-2 p-2.5 rounded-xl border-2 fuchsia-border bg-pink-50/20 cursor-pointer text-xs font-bold fuchsia-text">
+                                    <input type="radio" name="modalidadProd" value="venta" checked onchange="setModalidad('venta')" class="accent-pink-600">
+                                    <span>Compra / Venta</span>
+                                </label>
+                                <label id="lbl-mod-alquiler" class="flex items-center justify-center space-x-2 p-2.5 rounded-xl border-2 border-slate-200 bg-white cursor-pointer text-xs font-bold text-slate-600">
+                                    <input type="radio" name="modalidadProd" value="alquiler" onchange="setModalidad('alquiler')" class="accent-pink-600">
+                                    <span>Alquiler</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="wrapper-tallas" class="mt-3 space-y-1 hidden">
+                            <label class="block text-xs font-bold text-slate-700 uppercase">Seleccionar Talla *</label>
+                            <select id="opt-select-talla" onchange="recalculateProductPrice()" class="w-full border border-slate-200 bg-slate-50/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-pink-500 focus:outline-none"></select>
+                        </div>
+
+                        <div id="wrapper-colores" class="mt-3 space-y-1 hidden">
+                            <label class="block text-xs font-bold text-slate-700 uppercase">Seleccionar Color *</label>
+                            <select id="opt-select-color" onchange="recalculateProductPrice()" class="w-full border border-slate-200 bg-slate-50/50 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-pink-500 focus:outline-none"></select>
+                        </div>
+
+                        <div id="wrapper-custom" class="mt-3 space-y-1 hidden">
+                            <label class="block text-xs font-bold text-slate-700 uppercase">Personalización</label>
+                            <input type="text" id="opt-input-custom" placeholder="Texto o datos personalizados" class="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3 mt-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-bold text-slate-700 uppercase">Cantidad:</span>
+                                <div class="flex items-center border border-slate-200 bg-white rounded-xl overflow-hidden">
+                                    <button onclick="updateModalQty(-1)" class="px-3 py-1 font-extrabold text-slate-600 hover:bg-slate-100 text-sm">-</button>
+                                    <span id="opt-modal-qty" class="px-3 text-xs font-black">1</span>
+                                    <button onclick="updateModalQty(1)" class="px-3 py-1 font-extrabold text-slate-600 hover:bg-slate-100 text-sm">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="wrapper-deposito-info" class="hidden text-[11px] font-bold text-amber-700 bg-amber-50 p-2 rounded-xl">
+                            Depósito reembolsable: <strong id="opt-val-deposito">$ 0</strong>
+                        </div>
+
+                        <div id="wrapper-accesorios" class="hidden pt-2 border-t border-slate-200/60 space-y-2">
+                            <label class="block text-xs font-black text-slate-700 uppercase">Complementa tu look</label>
+                            <div id="accessory-options-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+                            <select id="opt-select-accesorio" class="hidden" tabindex="-1" aria-hidden="true"></select>
+                        </div>
+
+                        <div class="flex items-end justify-between pt-2 border-t border-slate-200/60">
+                            <span id="opt-price-tag" class="text-[10px] font-bold text-pink-600 uppercase block">Precio Detal</span>
+                            <span id="opt-modal-total-price" class="text-xl font-black text-slate-900">$ 0</span>
+                        </div>
+
+                        <div id="wrapper-anticipo" class="pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold">
+                            <span class="text-slate-500">Anticipo Requerido (<span id="opt-anticipo-pct">20</span>%):</span>
+                            <span id="opt-anticipo-val" class="fuchsia-text font-black text-sm">$ 0</span>
+                        </div>
+                    </div>
+
+                    <div class="product-modal-actions flex items-center space-x-3 mt-3">
+                        <button onclick="toggleFavoriteCurrent()" id="btn-modal-fav" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-pink-50 hover:text-pink-600 transition-colors">
+                            <i class="fa-regular fa-heart text-xl"></i>
+                        </button>
+                        <button onclick="addModalProductToCart()" class="flex-1 py-3.5 fuchsia-btn font-extrabold rounded-2xl shadow-lg transition-all text-xs flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                            <span>Agregar al Carrito</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FOTO COMPLETA -->
+    <div id="modal-full-image" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex items-center justify-center hidden p-4">
+        <div class="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
+            <button onclick="closeFullImageModal()" class="absolute -top-12 right-0 text-white hover:text-pink-400 text-2xl font-bold flex items-center space-x-2 transition-colors">
+                <span>Cerrar</span>
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <img id="full-modal-img" src="" alt="Foto completa del producto" class="max-h-[85vh] max-w-full object-contain rounded-2xl shadow-2xl">
+        </div>
+    </div>
+
+    <!-- MODAL CARRITO -->
+    <div id="modal-cart" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-end hidden">
+        <div class="mobile-drawer-panel bg-white h-full max-w-md w-full p-6 shadow-2xl flex flex-col justify-between space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 class="font-black text-slate-900 text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-bag-shopping fuchsia-text"></i>
+                    <span>Tu Carrito de Compras</span>
+                </h3>
+                <button onclick="closeCartModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div id="cart-items-container" class="flex-1 overflow-y-auto custom-scrollbar space-y-3"></div>
+            <div class="cart-modal-footer border-t border-slate-100 pt-4 space-y-3">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="font-bold text-slate-600">Total Estimado Productos:</span>
+                    <strong id="cart-total-amount" class="font-black text-slate-900 text-base">$ 0</strong>
+                </div>
+                <div class="flex justify-between items-center text-xs bg-pink-50 p-2.5 rounded-xl">
+                    <span class="font-bold fuchsia-text">Total Anticipo Requerido:</span>
+                    <strong id="cart-total-anticipo" class="font-black fuchsia-text text-sm">$ 0</strong>
+                </div>
+                <button onclick="checkoutCart()" class="w-full py-3.5 fuchsia-btn font-black rounded-xl shadow-md text-xs flex items-center justify-center space-x-2">
+                    <span>Procesar Pedido</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL FAVORITOS -->
+    <div id="modal-favorites" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-end hidden">
+        <div class="mobile-drawer-panel bg-white h-full max-w-md w-full p-6 shadow-2xl flex flex-col justify-between space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <h3 class="font-black text-slate-900 text-base flex items-center space-x-2">
+                    <i class="fa-solid fa-heart text-pink-600"></i>
+                    <span>Tus Favoritos</span>
+                </h3>
+                <button onclick="closeFavoritesModal()" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div id="favorites-items-container" class="flex-1 overflow-y-auto custom-scrollbar space-y-3"></div>
+            <button onclick="closeFavoritesModal()" class="favorites-modal-footer w-full py-3 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Lógica modular del catálogo. Se conserva el orden de carga para mantener las dependencias globales. -->
+    <script src="/shared/js/supabase-config.js"></script>
+    <script src="/catalogo/assets/js/00-config-state.js"></script>
+    <script src="/catalogo/assets/js/01-initialization.js"></script>
+    <script src="/catalogo/assets/js/02-product-data.js"></script>
+    <script src="/catalogo/assets/js/03-filters-search.js"></script>
+    <script src="/catalogo/assets/js/04-product-grid.js"></script>
+    <script src="/catalogo/assets/js/05-product-modal.js"></script>
+    <script src="/catalogo/assets/js/06-cart-favorites-state.js"></script>
+    <script src="/catalogo/assets/js/07-cart.js"></script>
+    <script src="/catalogo/assets/js/08-checkout.js"></script>
+    <script src="/catalogo/assets/js/09-favorites.js"></script>
+    <script src="/catalogo/assets/js/10-formatters.js"></script>
+    <script src="/catalogo/assets/js/11-responsive-navigation.js"></script>
+    <script src="/catalogo/assets/js/12-cart-animation.js"></script>
+    <script src="/catalogo/assets/js/13-brand-ui.js"></script>
+    <script src="/catalogo/assets/js/14-product-activity.js"></script>
+    <script src="/catalogo/assets/js/15-pwa-install.js"></script>
+</body>
+</html>
