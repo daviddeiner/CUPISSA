@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es" class="min-h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Perfil | CUPISSA</title>
+  <link rel="canonical" href="https://app.cupissa.com/perfil/">
+  <link rel="shortcut icon" href="/catalogo/assets/images/favicon.png" type="image/png">
+  <link rel="icon" href="/catalogo/assets/images/favicon.png" type="image/png">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="/assets/css/perfil.css">
+<script>
+(function(){
+  var path=window.location.pathname;
+  if(/\/index\.html$/i.test(path)){
+    var clean=path.replace(/index\.html$/i,'');
+    window.history.replaceState(null,document.title,clean+window.location.search+window.location.hash);
+  }
+})();
+</script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 font-sans">
+  <header class="profile-topbar">
+    <a href="/catalogo" class="flex items-center gap-3 min-w-0">
+      <img src="/catalogo/assets/images/logo.png" alt="CUPISSA" class="h-9 w-auto object-contain">
+      <span class="hidden sm:inline text-xs font-bold text-slate-500">Mi cuenta</span>
+    </a>
+    <button id="profile-back-button" type="button" class="profile-back-button" onclick="returnToCatalog()">
+      <i class="fa-solid fa-arrow-left"></i><span>Volver al catálogo</span>
+    </button>
+  </header>
+
+  <main class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+    <section id="profile-auth-section" class="max-w-xl mx-auto">
+      <div class="text-center mb-6">
+        <div class="profile-icon"><i class="fa-regular fa-user"></i></div>
+        <h1 class="text-2xl sm:text-3xl font-black text-slate-900">Tu perfil CUPISSA</h1>
+        <p class="text-sm text-slate-500 mt-2">Ingresa a tu cuenta o regístrate para consultar tus pedidos.</p>
+      </div>
+
+      <div class="bg-white rounded-3xl border border-pink-100 shadow-lg overflow-hidden">
+        <div class="grid grid-cols-2 p-2 bg-slate-50 gap-2">
+          <button type="button" id="auth-login-tab" class="auth-tab active" onclick="showAuthMode('login')">Iniciar sesión</button>
+          <button type="button" id="auth-register-tab" class="auth-tab" onclick="showAuthMode('register')">Registrarme</button>
+        </div>
+
+        <form id="profile-login-form" class="p-5 sm:p-7 space-y-4" onsubmit="loginProfile(event)">
+          <div id="profile-login-error" class="hidden profile-message error"></div>
+          <div>
+            <label class="profile-label" for="login-phone-profile">Teléfono</label>
+            <input id="login-phone-profile" class="profile-input" type="tel" inputmode="tel" autocomplete="tel" required placeholder="Ej. 3001234567">
+          </div>
+          <div>
+            <label class="profile-label" for="login-password-profile">Contraseña</label>
+            <input id="login-password-profile" class="profile-input" type="password" autocomplete="current-password" required placeholder="Tu contraseña">
+          </div>
+          <button class="profile-primary w-full" type="submit"><span>Ingresar</span><i class="fa-solid fa-arrow-right"></i></button>
+          <p class="text-center text-xs text-slate-500">¿Olvidaste tu contraseña?
+            <a id="forgot-password-link" class="font-extrabold text-pink-600 underline" href="https://wa.me/573245680018" target="_blank" rel="noopener" onclick="requestProfilePasswordChange(event)">Solicitar cambio</a>
+          </p>
+          <p class="text-[11px] leading-relaxed text-slate-400 text-center">Utiliza los mismos datos de acceso del Portal de Pagos CUPISSA.</p>
+        </form>
+
+        <form id="profile-register-form" class="hidden p-5 sm:p-7 space-y-4" onsubmit="registerProfile(event)">
+          <div id="profile-register-error" class="hidden profile-message error"></div>
+          <div id="profile-register-success" class="hidden profile-message success"></div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label class="profile-label" for="reg-nombres">Nombres</label><input id="reg-nombres" class="profile-input" required autocomplete="given-name"></div>
+            <div><label class="profile-label" for="reg-apellidos">Apellidos</label><input id="reg-apellidos" class="profile-input" required autocomplete="family-name"></div>
+          </div>
+          <div><label class="profile-label" for="reg-telefono">Teléfono</label><input id="reg-telefono" class="profile-input" type="tel" inputmode="tel" required autocomplete="tel"></div>
+          <div><label class="profile-label" for="reg-password">Contraseña</label><input id="reg-password" class="profile-input" type="password" minlength="6" required autocomplete="new-password"><p class="text-[10px] text-slate-400 mt-1">Mínimo 6 caracteres. Esta misma contraseña se usa en el Portal de Pagos.</p></div>
+          <div class="captcha-panel">
+            <div class="flex items-center justify-between gap-2"><span class="profile-label mb-0">Verificación de seguridad</span><button type="button" onclick="refreshProfileCaptcha()" class="text-pink-600 text-xs font-bold"><i class="fa-solid fa-rotate"></i> Cambiar letras</button></div>
+            <canvas id="profile-captcha-canvas" width="260" height="76" aria-label="Imagen de verificación con letras y números"></canvas>
+            <label class="profile-label" for="reg-captcha">¿Qué letras y números ves en la imagen?</label>
+            <input id="reg-captcha" class="profile-input" autocomplete="off" autocapitalize="characters" required placeholder="Escribe el código de la imagen">
+          </div>
+          <button class="profile-primary w-full" type="submit"><span>Crear mi cuenta</span><i class="fa-solid fa-user-plus"></i></button>
+          <p class="text-[10px] leading-relaxed text-slate-400">Al registrarte se crea también tu acceso al Portal de Pagos CUPISSA.</p>
+        </form>
+      </div>
+    </section>
+
+    <section id="profile-account-section" class="hidden space-y-5">
+      <div class="bg-white rounded-3xl p-5 sm:p-7 border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-4 min-w-0">
+          <div id="profile-avatar" class="profile-avatar">CU</div>
+          <div class="min-w-0"><p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Mi cuenta</p><h1 id="profile-heading-name" class="text-xl sm:text-2xl font-black text-slate-900 break-words">Mi perfil</h1><p id="profile-heading-phone" class="text-sm text-pink-600 font-bold mt-1"></p></div>
+        </div>
+        <button type="button" onclick="logoutProfile()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 font-bold text-xs self-start sm:self-center"><i class="fa-solid fa-right-from-bracket mr-1"></i> Cerrar sesión</button>
+      </div>
+
+      <section class="bg-white rounded-3xl p-5 sm:p-7 border border-slate-100 shadow-sm">
+        <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+          <div><h2 class="text-base sm:text-lg font-black text-slate-900">Datos de la cuenta</h2><p class="text-xs text-slate-400 mt-1">Información de contacto y entrega.</p></div>
+          <button type="button" id="profile-edit-button" onclick="toggleProfileEdit(true)" class="px-4 py-2 rounded-xl bg-pink-50 text-pink-700 border border-pink-100 text-xs font-black"><i class="fa-solid fa-pen mr-1"></i> EDITAR</button>
+        </div>
+        <div id="profile-data-view" class="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
+        <form id="profile-edit-form" class="hidden space-y-4" onsubmit="saveProfileChanges(event)">
+          <div id="profile-edit-error" class="hidden profile-message error"></div>
+          <div class="rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <p class="text-[11px] font-semibold text-slate-500">El nombre y el número de teléfono de la cuenta son datos fijos y no se pueden modificar desde el perfil.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+              <div><span class="profile-label">Nombre registrado</span><strong id="locked-profile-name" class="block text-sm text-slate-800"></strong></div>
+              <div><span class="profile-label">Teléfono registrado</span><strong id="locked-profile-phone" class="block text-sm text-slate-800"></strong></div>
+            </div>
+            <a id="profile-request-identity-change" href="https://wa.me/573245680018" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-xs font-black text-white shadow-sm hover:bg-green-700 transition-colors">
+              <i class="fa-brands fa-whatsapp text-base" aria-hidden="true"></i>
+              SOLICITAR CAMBIO POR WHATSAPP
+            </a>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label class="profile-label" for="edit-correo">Correo</label><input id="edit-correo" class="profile-input" type="email" autocapitalize="none"></div>
+            <div class="sm:col-span-2"><label class="profile-label" for="edit-direccion">Dirección</label><input id="edit-direccion" class="profile-input" autocapitalize="characters"></div>
+            <div><label class="profile-label" for="edit-barrio">Barrio</label><input id="edit-barrio" class="profile-input" autocapitalize="characters"></div>
+            <div><label class="profile-label" for="edit-ciudad">Ciudad</label><input id="edit-ciudad" class="profile-input" autocapitalize="characters"></div>
+          </div>
+          <div class="flex gap-2"><button type="button" onclick="toggleProfileEdit(false)" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Cancelar</button><button type="submit" class="flex-1 py-3 rounded-xl fuchsia-btn bg-pink-600 text-white text-xs font-black">Guardar cambios</button></div>
+        </form>
+      </section>
+
+      <section id="tus-pedidos" class="space-y-3">
+        <div class="flex items-end justify-between"><div><h2 class="text-lg sm:text-xl font-black text-slate-900">Tus pedidos</h2><p class="text-xs text-slate-400 mt-1">Consulta el estado y los detalles de tus compras o alquileres.</p></div><span id="profile-orders-count" class="text-xs font-bold text-pink-600">0 pedidos</span></div>
+        <div id="profile-orders-list" class="space-y-3"><div class="bg-white p-6 rounded-2xl text-center text-sm text-slate-400">Cargando tus pedidos...</div></div>
+      </section>
+    </section>
+  </main>
+
+  <div id="profile-order-modal" class="profile-order-modal hidden" role="dialog" aria-modal="true" aria-labelledby="profile-order-modal-title">
+    <div class="profile-order-modal-card">
+      <div class="flex items-center justify-between gap-3 border-b border-slate-100 p-4 sm:p-5"><div><p class="text-[10px] uppercase font-bold tracking-wider text-pink-600">Detalle de pedido</p><h2 id="profile-order-modal-title" class="font-black text-lg text-slate-900">Pedido CUP0001</h2></div><button onclick="closeProfileOrder()" class="w-9 h-9 rounded-full bg-slate-100 text-slate-600"><i class="fa-solid fa-xmark"></i></button></div>
+      <div id="profile-order-detail" class="p-4 sm:p-5 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <script src="/shared/js/supabase-config.js"></script>
+  <script src="/catalogo/assets/js/00-config-state.js"></script>
+  <script src="/assets/js/perfil.js"></script>
+</body>
+</html>
