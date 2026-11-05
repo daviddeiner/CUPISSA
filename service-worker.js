@@ -1,5 +1,5 @@
 /* CUPISSA | PWA Service Worker. Versionar esta constante cuando se publiquen cambios. */
-const CUPISSA_CACHE = 'cupissa-app-shell-v16';
+const CUPISSA_CACHE = 'cupissa-app-shell-v18-test-failed-payment';
 const CUPISSA_CACHE_PREFIX = 'cupissa-app-shell-';
 const CUPISSA_ASSETS = [
   'index.html',
@@ -40,7 +40,7 @@ const CUPISSA_ASSETS = [
   'catalogo/assets/images/app-icon-512.png',
   'catalogo/assets/images/app-icon-180.png',
   'assets/css/checkout.css',
-  'assets/js/checkout.js?v=20261104-wompi-pedidos-3',
+  'assets/js/checkout.js?v=20261104-swift-endpoint-test-failed-1',
   'assets/css/perfil.css',
   'assets/js/perfil.js',
   'shared/js/supabase-config.js',
@@ -54,7 +54,7 @@ const CUPISSA_ASSETS = [
   'portal-pagos/assets/js/08-payment-gateway.js',
   'portal-pagos/assets/js/09-formatters.js',
   'portal-pagos/services/wompi/02-date-and-late-fees.js',
-  'portal-pagos/services/wompi/04-checkout.js?v=20261104-wompi-pedidos-3'
+  'portal-pagos/services/wompi/04-checkout.js?v=20261104-swift-endpoint-2'
 ];
 
 self.addEventListener('install', event => {
