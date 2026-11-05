@@ -1,0 +1,228 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#e6007e">
+  <title>Estado de tu pago | CUPISSA</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      background: #fff5fa;
+      font-family: Arial, sans-serif;
+      color: #292329;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 460px;
+      padding: 38px 26px;
+      background: #fff;
+      border-radius: 22px;
+      box-shadow: 0 12px 45px rgba(80, 0, 40, .09);
+      text-align: center;
+    }
+
+    .logo {
+      color: #e6007e;
+      font-size: 30px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      margin-bottom: 30px;
+    }
+
+    .icon {
+      width: 78px;
+      height: 78px;
+      margin: 0 auto 22px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: #fff0f7;
+      color: #e6007e;
+      font-size: 38px;
+      font-weight: bold;
+    }
+
+    h1 {
+      font-size: 23px;
+      margin: 0 0 12px;
+    }
+
+    p {
+      color: #706770;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .reference {
+      margin: 25px 0;
+      padding: 15px;
+      border-radius: 12px;
+      background: #faf7f9;
+      text-align: left;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .reference strong {
+      display: block;
+      margin-bottom: 7px;
+      color: #555;
+    }
+
+    .reference span {
+      color: #292329;
+    }
+
+    .button {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      margin-top: 12px;
+      border: 0;
+      border-radius: 11px;
+      background: #e6007e;
+      color: #fff;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .secondary {
+      background: #fff0f7;
+      color: #d00070;
+    }
+
+    .note {
+      margin-top: 22px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="card">
+
+    <div class="logo">CUPISSA</div>
+
+    <div class="icon" id="status-icon">…</div>
+
+    <h1 id="status-title">
+      Estamos verificando tu pago
+    </h1>
+
+    <p id="status-message">
+      Recibimos tu regreso desde Wompi. Estamos esperando
+      la confirmación segura de tu transacción.
+    </p>
+
+    <div class="reference">
+      <strong>Identificador de transacción</strong>
+      <span id="transaction-id">Consultando...</span>
+    </div>
+
+    <a href="/perfil#tus-pedidos" class="button">
+      Consultar mis pedidos
+    </a>
+
+    <a href="/catalogo" class="button secondary">
+      Volver al catálogo
+    </a>
+
+    <p class="note">
+      No realices otro pago mientras tu transacción esté
+      pendiente. Si necesitas ayuda, comunícate con CUPISSA.
+    </p>
+
+  </main>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const params = new URLSearchParams(
+        window.location.search
+      );
+
+      const transactionId = params.get('id');
+
+      const icon =
+        document.getElementById('status-icon');
+
+      const title =
+        document.getElementById('status-title');
+
+      const message =
+        document.getElementById('status-message');
+
+      const idElement =
+        document.getElementById('transaction-id');
+
+      if (transactionId) {
+        idElement.textContent = transactionId;
+
+        try {
+          const pending = JSON.parse(
+            localStorage.getItem(
+              'cupissa_pending_web_payment'
+            ) || 'null'
+          );
+
+          if (pending) {
+            pending.transaction = {
+              id: transactionId,
+              status: 'PENDING'
+            };
+
+            localStorage.setItem(
+              'cupissa_pending_web_payment',
+              JSON.stringify(pending)
+            );
+          }
+
+        } catch (error) {
+          console.warn(
+            'No fue posible guardar el pago pendiente:',
+            error
+          );
+        }
+
+        icon.textContent = '…';
+
+        title.textContent =
+          'Estamos verificando tu pago';
+
+        message.textContent =
+          'Tu transacción fue recibida. Estamos esperando la confirmación oficial de Wompi para actualizar tu pedido.';
+
+      } else {
+        icon.textContent = '!';
+
+        title.textContent =
+          'No encontramos el identificador del pago';
+
+        idElement.textContent =
+          'No disponible';
+
+        message.textContent =
+          'No recibimos el identificador de la transacción. Ingresa a tu perfil CUPISSA para consultar el estado de tu pedido.';
+      }
+
+    })();
+  </script>
+
+</body>
+</html>
