@@ -1,4 +1,3 @@
-
 /**
  * CUPISSA | Wompi Checkout
  * La firma y la referencia son generadas por Supabase.
@@ -74,10 +73,12 @@
             (result?.id ? result : null);
 
           if (!transaction?.id) {
-            reject(new Error(
-              'Wompi no devolvió el identificador del pago. ' +
-              'No vuelvas a pagar hasta consultar su estado.'
-            ));
+            // El cliente cerró la ventana sin pagar.
+            const closed = new Error(
+              'Cerraste la ventana de pago. Si no completaste el pago, no se realizó ningún cobro.'
+            );
+            closed.code = 'WIDGET_CLOSED';
+            reject(closed);
             return;
           }
 
