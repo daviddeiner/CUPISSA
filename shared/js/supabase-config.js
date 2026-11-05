@@ -4,11 +4,3 @@ window.CUPISSA_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3M
 window.CUPISSA_WHATSAPP = '573245680018';
 
 
-/** CUPISSA | Credenciales para abrir directamente el Widget Checkout de Wompi.
- * Completa estos dos valores con las llaves del mismo ambiente (test o producción).
- */
-window.CUPISSA_WOMPI_CONFIG = {
-  publicKey: 'pub_prod_q69BzlCLtdFiZQEmbQFTMX9uXwr6E4Xg',
-  integritySecret: 'prod_integrity_KeQNY1wOw2baT11W9qAXZ2aD82ORXnbL',
-  currency: 'COP'
-};
