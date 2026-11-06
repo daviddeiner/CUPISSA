@@ -4,7 +4,7 @@
  */
 
 function openOptionsModal(prodId) {
-            const prod = rawProducts.find(p => p.id === prodId);
+            const prod = rawProducts.find(p => String(p.id) === String(prodId));
             if (!prod) return;
 
             selectedProductModal = prod;
@@ -89,12 +89,16 @@ function openOptionsModal(prodId) {
                     const opt = document.createElement('option');
                     opt.value = c.nombre;
                     opt.dataset.inc = c.incremento || 0;
+                    opt.dataset.photo = String(c.foto || c.imagen || c.imagen_url || '').trim();
                     opt.innerText = c.incremento > 0 ? `${c.nombre} (+${formatCOP(c.incremento)})` : c.nombre;
                     selectColor.appendChild(opt);
                 });
                 wrapColores.classList.remove('hidden');
                 if (typeof enhanceCupissaSelect === 'function') enhanceCupissaSelect(selectColor, 'Selecciona un color');
+                selectColor.onchange = handleProductColorChange;
+                handleProductColorChange();
             } else {
+                selectColor.onchange = null;
                 wrapColores.classList.add('hidden');
             }
 
@@ -232,6 +236,32 @@ function updateAccessoryChoiceState() {
         button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
     });
 }
+
+        function handleProductColorChange() {
+            const selectColor = document.getElementById('opt-select-color');
+            const mainImg = document.getElementById('opt-modal-img');
+            if (!selectedProductModal || !selectColor || !mainImg) return;
+
+            const selectedPhoto = String(selectColor.selectedOptions[0]?.dataset.photo || '').trim();
+            if (selectedPhoto) {
+                const photos = selectedProductModal.fotos || [];
+                const index = photos.findIndex(photo => String(photo) === selectedPhoto);
+                activePhotoIndex = index >= 0 ? index : 0;
+                mainImg.src = selectedPhoto;
+                document.querySelectorAll('#opt-modal-thumbs img').forEach((thumb, thumbIndex) => {
+                    const isActive = index >= 0 && thumbIndex === index;
+                    thumb.className = `w-12 h-12 object-cover rounded-xl border-2 cursor-pointer ${isActive ? 'fuchsia-border' : 'border-transparent'}`;
+                });
+            } else {
+                activePhotoIndex = 0;
+                const firstPhoto = selectedProductModal.fotos?.[0];
+                if (firstPhoto) mainImg.src = firstPhoto;
+                document.querySelectorAll('#opt-modal-thumbs img').forEach((thumb, thumbIndex) => {
+                    thumb.className = `w-12 h-12 object-cover rounded-xl border-2 cursor-pointer ${thumbIndex === 0 ? 'fuchsia-border' : 'border-transparent'}`;
+                });
+            }
+            recalculateProductPrice();
+        }
 
         function openFullImageModal() {
             if (!selectedProductModal) return;
