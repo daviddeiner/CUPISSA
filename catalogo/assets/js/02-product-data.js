@@ -15,20 +15,14 @@ function shuffleArray(array) {
             let allFetched = [];
 
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/productos?select=*`, {
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && Array.isArray(data)) {
-                        allFetched = data;
-                    }
-                }
+                const { data, error } = await supabaseClient
+                    .from('productos')
+                    .select('*')
+                    .eq('oculto', false);
+                if (error) throw error;
+                allFetched = Array.isArray(data) ? data : [];
             } catch (err) {
-                console.error("Excepción en fetch Supabase:", err);
+                console.error("Excepción en consulta de productos visibles de Supabase:", err);
             }
 
             rawProducts = allFetched.map(normalizeProduct);
@@ -62,17 +56,67 @@ function shuffleArray(array) {
             }
         }
 
+        function parseProductArray(value) {
+            if (Array.isArray(value)) return [...value];
+            if (typeof value !== 'string' || !value.trim()) return [];
+            try {
+                const parsed = JSON.parse(value);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (_) {
+                return [];
+            }
+        }
+
         function normalizeProduct(p) {
             let fotosParsed = [];
             if (p.fotos) {
-                if (Array.isArray(p.fotos)) fotosParsed = p.fotos;
+                if (Array.isArray(p.fotos)) fotosParsed = [...p.fotos];
                 else if (typeof p.fotos === 'string') {
-                    try { fotosParsed = JSON.parse(p.fotos); } catch(e) { fotosParsed = [p.fotos]; }
+                    try {
+                        const parsed = JSON.parse(p.fotos);
+                        fotosParsed = Array.isArray(parsed) ? parsed : [p.fotos];
+                    } catch(e) { fotosParsed = [p.fotos]; }
                 }
             }
+
+            let coloresParsed = [];
+            if (Array.isArray(p.colores)) coloresParsed = [...p.colores];
+            else if (typeof p.colores === 'string' && p.colores.trim()) {
+                try {
+                    const parsed = JSON.parse(p.colores);
+                    coloresParsed = Array.isArray(parsed) ? parsed : [];
+                } catch (_) { coloresParsed = []; }
+            }
+            coloresParsed = coloresParsed.map(color =>
+                typeof color === 'string'
+                    ? { nombre: color, incremento: 0, foto: '' }
+                    : { ...color }
+            );
+
+            // Cada foto asignada a un color también forma parte de la galería principal.
+            coloresParsed.forEach(color => {
+                const photo = String(color.foto || color.imagen || color.imagen_url || '').trim();
+                if (photo && !fotosParsed.includes(photo)) fotosParsed.push(photo);
+            });
+
             if (fotosParsed.length === 0) {
                 fotosParsed = ['https://via.placeholder.com/400x400?text=Cupissa'];
             }
+
+            let fotosOriginalesParsed = [];
+            if (Array.isArray(p.fotos_originales)) fotosOriginalesParsed = [...p.fotos_originales];
+            else if (typeof p.fotos_originales === 'string' && p.fotos_originales.trim()) {
+                try {
+                    const parsed = JSON.parse(p.fotos_originales);
+                    fotosOriginalesParsed = Array.isArray(parsed) ? parsed : [p.fotos_originales];
+                } catch (_) { fotosOriginalesParsed = [p.fotos_originales]; }
+            }
+            if (!fotosOriginalesParsed.length) fotosOriginalesParsed = [...fotosParsed];
+            coloresParsed.forEach(color => {
+                const photo = String(color.foto || color.imagen || color.imagen_url || '').trim();
+                const original = String(color.foto_original || color.original || photo).trim();
+                if (photo && !fotosOriginalesParsed.includes(original)) fotosOriginalesParsed.push(original);
+            });
 
             return {
                 id: p.id || 'p_' + Math.random().toString(36).substr(2, 9),
@@ -94,10 +138,10 @@ function shuffleArray(array) {
                 alquiler: (p.alquiler === true || p.alquiler === 1 || p.alquiler === '1' || String(p.alquiler).toLowerCase() === 'true') && parseFloat(p.precio_alquiler || 0) > 0,
                 venta: true,
                 fotos: fotosParsed,
-                fotos_originales: p.fotos_originales || fotosParsed,
-                tallas: p.tallas || [],
-                colores: p.colores || [],
-                accesorios: p.accesorios || []
+                fotos_originales: fotosOriginalesParsed,
+                tallas: parseProductArray(p.tallas),
+                colores: coloresParsed,
+                accesorios: parseProductArray(p.accesorios)
             };
         }
 
