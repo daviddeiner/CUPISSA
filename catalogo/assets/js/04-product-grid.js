@@ -8,8 +8,21 @@ function catalogProductCard(prod, options = {}) {
     const basePriceLabel = 'Desde';
     const card = document.createElement('div');
     card.className = options.featured
-        ? 'bg-white rounded-2xl overflow-hidden border border-pink-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group'
-        : 'bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group';
+        ? 'bg-white rounded-2xl overflow-hidden border border-pink-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer'
+        : 'bg-white rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between group cursor-pointer';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', `Ver opciones de ${prod.nombre}`);
+    card.title = `Ver ${prod.nombre}`;
+    card.addEventListener('click', event => {
+        if (event.target.closest('[data-card-ignore-open]')) return;
+        openOptionsModal(prod.id);
+    });
+    card.addEventListener('keydown', event => {
+        if (event.target !== card || !['Enter', ' '].includes(event.key)) return;
+        event.preventDefault();
+        openOptionsModal(prod.id);
+    });
     card.innerHTML = `
         <div>
             <div class="relative bg-slate-100 aspect-square overflow-hidden">
@@ -17,7 +30,7 @@ function catalogProductCard(prod, options = {}) {
                 <div class="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1 items-start">
                     ${prod.temporada ? `<span class="bg-pink-600 text-white font-black text-[8px] sm:text-[9px] uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm">${prod.temporada}</span>` : ''}
                 </div>
-                <button onclick="toggleFavorite('${prod.id}', event)" class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/80 backdrop-blur-md text-slate-400 hover:text-pink-600 flex items-center justify-center transition-colors shadow-sm" aria-label="Agregar a favoritos">
+                <button data-card-ignore-open type="button" onclick="toggleFavorite('${prod.id}', event)" class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/80 backdrop-blur-md text-slate-400 hover:text-pink-600 flex items-center justify-center transition-colors shadow-sm" aria-label="Agregar a favoritos">
                     <i class="${isFav ? 'fa-solid fa-heart text-pink-600 text-xs sm:text-sm' : 'fa-regular fa-heart text-xs sm:text-sm'}"></i>
                 </button>
             </div>
@@ -36,7 +49,7 @@ function catalogProductCard(prod, options = {}) {
                 <span class="text-[8px] sm:text-[10px] text-slate-400 block font-semibold">${basePriceLabel}</span>
                 <span class="font-black text-slate-900 text-xs sm:text-base">${formatCOP(basePrice)}</span>
             </div>
-            <button type="button" onclick="openOptionsModal('${prod.id}')" class="product-card-cart-button w-10 h-9 sm:w-12 sm:h-11 fuchsia-btn font-extrabold rounded-xl sm:rounded-2xl shadow-md transition-all flex items-center justify-center" aria-label="Ver opciones y agregar ${prod.nombre} al carrito" title="Agregar al carrito">
+            <button type="button" class="product-card-cart-button w-10 h-9 sm:w-12 sm:h-11 fuchsia-btn font-extrabold rounded-xl sm:rounded-2xl shadow-md transition-all flex items-center justify-center" aria-label="Ver opciones y agregar ${prod.nombre} al carrito" title="Agregar al carrito">
                 <i class="fa-solid fa-cart-shopping text-sm sm:text-base" aria-hidden="true"></i>
             </button>
         </div>`;
