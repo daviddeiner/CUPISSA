@@ -1,10 +1,11 @@
 /* CUPISSA | PWA Service Worker. Versionar esta constante cuando se publiquen cambios. */
-const CUPISSA_CACHE = 'cupissa-app-shell-v18-test-failed-payment';
+const CUPISSA_CACHE = 'cupissa-app-shell-v19-delivery-colors';
 const CUPISSA_CACHE_PREFIX = 'cupissa-app-shell-';
 const CUPISSA_ASSETS = [
   'index.html',
   'catalogo/',
   'checkout/',
+  'assets/data/domicilios.json',
   'perfil/',
   'portal-pagos/',
   'terminos-y-condiciones/',
@@ -40,7 +41,7 @@ const CUPISSA_ASSETS = [
   'catalogo/assets/images/app-icon-512.png',
   'catalogo/assets/images/app-icon-180.png',
   'assets/css/checkout.css',
-  'assets/js/checkout.js?v=20261104-swift-endpoint-test-failed-1',
+  'assets/js/checkout.js?v=20261106-domicilios-colores-1',
   'assets/css/perfil.css',
   'assets/js/perfil.js',
   'shared/js/supabase-config.js',
