@@ -9,13 +9,19 @@ const CatalogService = {
      */
     async getProducts(supabaseClient) {
         try {
-            const { data, error } = await supabaseClient.from('productos').select('*');
-            if (error || !data || data.length === 0) {
-                return this.getLocalProducts();
+            const { data, error } = await supabaseClient.from('productos').select('*').eq('oculto', false);
+            if (error || !Array.isArray(data)) {
+                return this.getLocalProducts().filter(product => {
+                    const hidden = product?.oculto;
+                    return hidden !== true && hidden !== 1 && String(hidden).toLowerCase() !== 'true' && String(hidden) !== '1';
+                });
             }
             return data;
         } catch (e) {
-            return this.getLocalProducts();
+            return this.getLocalProducts().filter(product => {
+                const hidden = product?.oculto;
+                return hidden !== true && hidden !== 1 && String(hidden).toLowerCase() !== 'true' && String(hidden) !== '1';
+            });
         }
     },
 
