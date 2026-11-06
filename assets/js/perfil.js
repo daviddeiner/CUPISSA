@@ -1,380 +1,1892 @@
-/* CUPISSA | Perfil de clientes. Comparte la sesión legada con el Portal de Pagos. */
+
+/* ============================================================
+   CUPISSA | PERFIL DE CLIENTES
+   Autenticación Supabase + OTP + Google + cuentas anteriores
+   Conserva pedidos, fotografías y detalles de compra.
+   ============================================================ */
+
 (() => {
+  'use strict';
+
   const $ = id => document.getElementById(id);
-  const clientDb = (typeof supabaseClient !== 'undefined') ? supabaseClient : null;
-  const money = value => '$ ' + new Intl.NumberFormat('es-CO').format(Number(value || 0));
-  const safe = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const profileStatuses = ['AGENDADO','EN FABRICACIÓN','EN DEPARTAMENTO DE DESPACHO','EN CAMINO','ENTREGADO','CANCELADO'];
+
+  const clientDb =
+    typeof supabaseClient !== 'undefined'
+      ? supabaseClient
+      : window.supabaseClient;
+
+  const AUTH = () => window.CUPISSAAuth;
+
+  const money = value =>
+    '$ ' + new Intl.NumberFormat('es-CO').format(Number(value || 0));
+
+  const safe = value =>
+    String(value ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[c]);
+
+  const DUPLICATE_PHONE =
+    'EL TELEFONO YA ESTA REGISTRADO, RECUPERA TU CONTRASEÑA O USA UNO NUEVO';
+
   let currentClient = null;
   let currentProfile = null;
-  let captchaCode = '';
+  let pendingSignup = null;
+  let pendingGoogleEmail = '';
+  let pendingRecoveryEmail = '';
+  let googleOtpVerified = false;
+
+  /* ============================================================
+     MENSAJES
+     ============================================================ */
 
   function showMessage(id, message, success = false) {
-    const el = $(id); if (!el) return;
-    el.textContent = message; el.classList.remove('hidden','error','success'); el.classList.add(success ? 'success' : 'error');
+    const el = $(id);
+    if (!el) return;
+
+    el.textContent = message;
+    el.classList.remove('hidden', 'error', 'success');
+    el.classList.add(success ? 'success' : 'error');
   }
-  function hideMessage(id) { const el = $(id); if (el) el.classList.add('hidden'); }
-  function parseSession() {
-    try { return JSON.parse(localStorage.getItem('cupissa_client_session') || 'null'); } catch (_) { return null; }
+
+  function hideMessage(id) {
+    const el = $(id);
+    if (el) el.classList.add('hidden');
   }
+
+  function showFlowMessage(id, message, success = false) {
+    const el = $(id);
+    if (!el) return;
+
+    el.textContent = message;
+    el.style.display = 'block';
+    el.classList.remove('hidden');
+    el.classList.toggle('profile-flow-success', success);
+    el.classList.toggle('profile-flow-error', !success);
+  }
+
+  function hideFlowMessage(id) {
+    const el = $(id);
+    if (!el) return;
+    el.style.display = 'none';
+    el.textContent = '';
+  }
+
+  function friendlyError(error) {
+    const original = String(error?.message || '').toLowerCase();
+    const code = String(error?.code || '');
+
+    if (
+      original.includes('phone') ||
+      original.includes('telefono') ||
+      original.includes('teléfono') ||
+      code === '23505'
+    ) {
+      return DUPLICATE_PHONE;
+    }
+
+    if (
+      original.includes('invalid login credentials') ||
+      original.includes('invalid credentials')
+    ) {
+      return 'El correo o la contraseña no son correctos.';
+    }
+
+    if (
+      original.includes('expired') ||
+      original.includes('otp_expired')
+    ) {
+      return 'El código venció. Solicita uno nuevo.';
+    }
+
+    if (
+      original.includes('invalid otp') ||
+      original.includes('invalid token')
+    ) {
+      return 'El código no es correcto. Verifica los seis dígitos.';
+    }
+
+    if (
+      original.includes('rate limit') ||
+      original.includes('too many requests')
+    ) {
+      return 'Has solicitado varios códigos. Espera unos minutos e inténtalo nuevamente.';
+    }
+
+    return error?.message ||
+      'No fue posible completar la operación. Inténtalo nuevamente.';
+  }
+
+  function handleError(id, error, fallback) {
+    console.error('[CUPISSA PERFIL]', error);
+    showMessage(id, friendlyError(error) || fallback);
+  }
+
+  function disableButton(button, disabled, text) {
+    if (!button) return;
+
+    button.disabled = disabled;
+    button.classList.toggle('opacity-60', disabled);
+
+    if (text !== undefined) {
+      if (disabled) {
+        button.dataset.originalText = button.innerHTML;
+        button.textContent = text;
+      } else if (button.dataset.originalText) {
+        button.innerHTML = button.dataset.originalText;
+        delete button.dataset.originalText;
+      }
+    }
+  }
+
+  function cleanEmail(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function cleanPhone(value) {
+    return String(value || '').trim().replace(/\s+/g, '');
+  }
+
+  function cleanName(value) {
+    return String(value || '').trim().toLocaleUpperCase('es-CO');
+  }
+
+  function validEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail(value));
+  }
+
+  function validOtp(value) {
+    return /^\d{6}$/.test(String(value || '').trim());
+  }
+
   function splitName(full = '') {
     const bits = String(full).trim().split(/\s+/).filter(Boolean);
-    return { nombres: bits.shift() || '', apellidos: bits.join(' ') };
+    return {
+      nombres: bits.shift() || '',
+      apellidos: bits.join(' ')
+    };
   }
+
+  /* ============================================================
+     SESIÓN Y PERFIL
+     ============================================================ */
+
   function setSession(client) {
-    currentClient = client;
-    localStorage.setItem('cupissa_client_session', JSON.stringify(client));
+    currentClient = {
+      id: client.id,
+      nombre: client.nombre,
+      telefono: client.telefono,
+      correo: client.correo,
+      cupo_disponible: client.cupo_disponible,
+      cupo_total: client.cupo_total
+    };
+
+    localStorage.setItem(
+      'cupissa_client_session',
+      JSON.stringify(currentClient)
+    );
   }
+
   function showAccount() {
-    $('profile-auth-section').classList.add('hidden');
-    $('profile-account-section').classList.remove('hidden');
+    $('profile-auth-section')?.classList.add('hidden');
+    $('profile-account-section')?.classList.remove('hidden');
   }
+
   function showAuth() {
-    $('profile-account-section').classList.add('hidden');
-    $('profile-auth-section').classList.remove('hidden');
+    $('profile-account-section')?.classList.add('hidden');
+    $('profile-auth-section')?.classList.remove('hidden');
   }
-  function renderProfile() {
-    if (!currentClient || !currentProfile) return;
-    const fullName = [currentProfile.nombres, currentProfile.apellidos].filter(Boolean).join(' ').toLocaleUpperCase('es-CO');
-    $('profile-heading-name').textContent = fullName || String(currentClient.nombre || 'Mi perfil').toLocaleUpperCase('es-CO');
-    $('profile-heading-phone').textContent = currentProfile.telefono || currentClient.telefono || '';
-    $('profile-avatar').textContent = (currentProfile.nombres || currentClient.nombre || 'CU').slice(0,2).toUpperCase();
-    const fields = [
-      ['Nombres', String(currentProfile.nombres || '').toLocaleUpperCase('es-CO')], ['Apellidos', String(currentProfile.apellidos || '').toLocaleUpperCase('es-CO')], ['Teléfono', currentProfile.telefono],
-      ['Correo', String(currentProfile.correo || '').toLowerCase()], ['Dirección', String(currentProfile.direccion || '').toLocaleUpperCase('es-CO')], ['Barrio', String(currentProfile.barrio || '').toLocaleUpperCase('es-CO')], ['Ciudad', String(currentProfile.ciudad || '').toLocaleUpperCase('es-CO')]
-    ];
-    $('profile-data-view').innerHTML = fields.map(([label,value]) => `<div class="profile-field"><span>${safe(label)}</span><strong>${safe(value || 'No registrado')}</strong></div>`).join('');
-    $('locked-profile-name').textContent = fullName || String(currentClient.nombre || '—').toLocaleUpperCase('es-CO');
-    $('locked-profile-phone').textContent = currentProfile.telefono || currentClient.telefono || '—';
-    $('edit-correo').value = String(currentProfile.correo || '').toLowerCase();
-    $('edit-direccion').value = String(currentProfile.direccion || '').toLocaleUpperCase('es-CO');
-    $('edit-barrio').value = String(currentProfile.barrio || '').toLocaleUpperCase('es-CO');
-    $('edit-ciudad').value = String(currentProfile.ciudad || '').toLocaleUpperCase('es-CO');
-    const phone = currentProfile.telefono || currentClient.telefono || '';
-    const identityChange = $('profile-request-identity-change');
-    if (identityChange) {
-      const requestText = `Hola CUPISSA, solicito actualizar los datos fijos de mi cuenta. Nombre registrado: ${fullName || currentClient.nombre || 'No indicado'}. Teléfono registrado: ${phone || 'No indicado'}. Por favor, indíquenme el proceso para solicitar el cambio.`;
-      identityChange.href = `https://wa.me/${window.CUPISSA_WHATSAPP || '573245680018'}?text=${encodeURIComponent(requestText)}`;
+
+  function hideAllAuthPanels() {
+    [
+      'profile-login-form',
+      'profile-register-form',
+      'profile-signup-otp-panel',
+      'profile-google-otp-panel',
+      'profile-google-register-panel',
+      'profile-recovery-panel',
+      'profile-legacy-link-panel'
+    ].forEach(id => {
+      $(id)?.classList.remove('active');
+      $(id)?.classList.add('hidden');
+    });
+  }
+
+  function showPanel(id) {
+    hideAllAuthPanels();
+
+    const panel = $(id);
+    if (!panel) return;
+
+    panel.classList.remove('hidden');
+    panel.classList.add('active');
+  }
+
+  window.showProfileFlow = function (flow) {
+    const panels = {
+      recovery: 'profile-recovery-panel',
+      legacy: 'profile-legacy-link-panel',
+      signupOtp: 'profile-signup-otp-panel',
+      googleOtp: 'profile-google-otp-panel',
+      googleRegister: 'profile-google-register-panel'
+    };
+
+    if (panels[flow]) {
+      showPanel(panels[flow]);
     }
-    $('forgot-password-link').href = `https://wa.me/${window.CUPISSA_WHATSAPP || '573245680018'}?text=${encodeURIComponent(`Hola CUPISSA, solicito ayuda para cambiar la contraseña de mi cuenta. Mi teléfono registrado es ${phone}.`)}`;
-  }
+  };
+
+  window.showAuthMode = function (mode) {
+    const login = mode === 'login';
+
+    hideAllAuthPanels();
+
+    $(login ? 'profile-login-form' : 'profile-register-form')
+      ?.classList.remove('hidden');
+
+    $('auth-login-tab')?.classList.toggle('active', login);
+    $('auth-register-tab')?.classList.toggle('active', !login);
+
+    hideMessage('profile-login-error');
+    hideMessage('profile-register-error');
+
+    $('profile-show-legacy-link')?.classList.remove('hidden');
+  };
+
+  /* ============================================================
+     CARGA DEL PERFIL
+     ============================================================ */
+
   async function ensureProfile(client) {
-    const { data, error } = await clientDb.from('clientes_web').select('*').eq('cliente_id', String(client.id)).maybeSingle();
+    const { data, error } = await clientDb
+      .from('clientes_web')
+      .select('*')
+      .eq('cliente_id', String(client.id))
+      .maybeSingle();
+
     if (error) throw error;
     if (data) return data;
-    // Compatibilidad con perfiles creados antes de enlazar la tabla clientes antigua.
-    const byPhone = await clientDb.from('clientes_web').select('*').eq('telefono', client.telefono || '').maybeSingle();
+
+    const byPhone = await clientDb
+      .from('clientes_web')
+      .select('*')
+      .eq('telefono', client.telefono || '')
+      .maybeSingle();
+
     if (byPhone.error) throw byPhone.error;
+
     if (byPhone.data) {
-      const linked = await clientDb.from('clientes_web').update({ cliente_id: String(client.id) }).eq('id', byPhone.data.id).select('*').single();
+      const linked = await clientDb
+        .from('clientes_web')
+        .update({
+          cliente_id: String(client.id),
+          correo: client.correo || byPhone.data.correo || ''
+        })
+        .eq('id', byPhone.data.id)
+        .select('*')
+        .single();
+
       if (linked.error) throw linked.error;
       return linked.data;
     }
+
     const parsed = splitName(client.nombre || '');
+
     const newProfile = {
       cliente_id: String(client.id),
       nombres: parsed.nombres,
       apellidos: parsed.apellidos,
       telefono: client.telefono || '',
       correo: client.correo || '',
-      direccion: '', barrio: '', ciudad: ''
+      direccion: '',
+      barrio: '',
+      ciudad: ''
     };
-    const inserted = await clientDb.from('clientes_web').insert([newProfile]).select('*').single();
+
+    const inserted = await clientDb
+      .from('clientes_web')
+      .insert([newProfile])
+      .select('*')
+      .single();
+
     if (inserted.error) throw inserted.error;
+
     return inserted.data;
   }
+
+  function renderProfile() {
+    if (!currentClient || !currentProfile) return;
+
+    const fullName = [
+      currentProfile.nombres,
+      currentProfile.apellidos
+    ].filter(Boolean).join(' ').toLocaleUpperCase('es-CO');
+
+    $('profile-heading-name').textContent =
+      fullName ||
+      String(currentClient.nombre || 'Mi perfil').toLocaleUpperCase('es-CO');
+
+    $('profile-heading-phone').textContent =
+      currentProfile.telefono || currentClient.telefono || '';
+
+    $('profile-avatar').textContent =
+      (currentProfile.nombres || currentClient.nombre || 'CU')
+        .slice(0, 2)
+        .toUpperCase();
+
+    const fields = [
+      ['Nombres', cleanName(currentProfile.nombres)],
+      ['Apellidos', cleanName(currentProfile.apellidos)],
+      ['Teléfono', currentProfile.telefono],
+      ['Correo', cleanEmail(currentProfile.correo)],
+      ['Dirección', cleanName(currentProfile.direccion)],
+      ['Barrio', cleanName(currentProfile.barrio)],
+      ['Ciudad', cleanName(currentProfile.ciudad)]
+    ];
+
+    $('profile-data-view').innerHTML = fields.map(([label, value]) => `
+      <div class="profile-field">
+        <span>${safe(label)}</span>
+        <strong>${safe(value || 'No registrado')}</strong>
+      </div>
+    `).join('');
+
+    $('locked-profile-name').textContent =
+      fullName || currentClient.nombre || '—';
+
+    $('locked-profile-phone').textContent =
+      currentProfile.telefono || currentClient.telefono || '—';
+
+    $('edit-correo').value =
+      cleanEmail(currentProfile.correo);
+
+    $('edit-direccion').value =
+      cleanName(currentProfile.direccion);
+
+    $('edit-barrio').value =
+      cleanName(currentProfile.barrio);
+
+    $('edit-ciudad').value =
+      cleanName(currentProfile.ciudad);
+
+    const phone =
+      currentProfile.telefono || currentClient.telefono || '';
+
+    const identityChange = $('profile-request-identity-change');
+
+    if (identityChange) {
+      const requestText =
+        `Hola CUPISSA, solicito actualizar los datos fijos de mi cuenta. ` +
+        `Nombre registrado: ${fullName || currentClient.nombre || 'No indicado'}. ` +
+        `Teléfono registrado: ${phone || 'No indicado'}.`;
+
+      identityChange.href =
+        `https://wa.me/${window.CUPISSA_WHATSAPP || '573245680018'}` +
+        `?text=${encodeURIComponent(requestText)}`;
+    }
+  }
+
   async function loadProfile(client) {
+    if (!client?.id) {
+      throw new Error('No encontramos los datos de tu cuenta CUPISSA.');
+    }
+
     currentProfile = await ensureProfile(client);
+
     setSession(client);
-    renderProfile(); showAccount();
+    renderProfile();
+    showAccount();
+
     await loadOrders();
-    const requestedOrder = new URLSearchParams(location.search).get('pedidoId');
+
+    const requestedOrder =
+      new URLSearchParams(location.search).get('pedidoId');
+
     if (requestedOrder) {
-      const found = (window.__cupissaWebOrders || []).find(order => String(order.id) === String(requestedOrder));
+      const found = (window.__cupissaWebOrders || [])
+        .find(order => String(order.id) === String(requestedOrder));
+
       if (found) {
-        document.getElementById('tus-pedidos')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        $('tus-pedidos')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+
         window.openProfileOrder(found.id);
       }
     }
+
     redirectToCheckoutIfRequested();
   }
 
-
   function redirectToCheckoutIfRequested() {
     const params = new URLSearchParams(location.search);
+
     if (params.get('next') !== 'checkout') return;
-    if (params.get('embedded') === '1' && window.parent !== window) {
-      window.parent.postMessage({ type: 'CUPISSA_PROFILE_CHECKOUT' }, location.origin);
+
+    if (
+      params.get('embedded') === '1' &&
+      window.parent !== window
+    ) {
+      window.parent.postMessage(
+        { type: 'CUPISSA_PROFILE_CHECKOUT' },
+        location.origin
+      );
     } else {
       location.href = '/checkout';
     }
   }
 
-  window.showAuthMode = function(mode) {
-    const login = mode === 'login';
-    $('profile-login-form').classList.toggle('hidden', !login);
-    $('profile-register-form').classList.toggle('hidden', login);
-    $('auth-login-tab').classList.toggle('active', login);
-    $('auth-register-tab').classList.toggle('active', !login);
-    hideMessage('profile-login-error'); hideMessage('profile-register-error');
-  };
+  /* ============================================================
+     INICIO DE SESIÓN CON CORREO
+     ============================================================ */
 
-  window.loginProfile = async function(event) {
-    event.preventDefault(); hideMessage('profile-login-error');
-    const phone = $('login-phone-profile').value.trim();
-    const password = $('login-password-profile').value;
-    const button = $('profile-login-form').querySelector('button[type="submit"]');
-    button.disabled = true; button.classList.add('opacity-60');
-    try {
-      const { data, error } = await clientDb.from('clientes').select('*').eq('telefono', phone).eq('password', password).maybeSingle();
-      if (error) throw error;
-      if (!data) { showMessage('profile-login-error','Teléfono o contraseña incorrectos.'); return; }
-      await loadProfile(data);
-    } catch (error) {
-      console.error('Error al iniciar sesión CUPISSA:', error);
-      showMessage('profile-login-error','No fue posible ingresar. Verifica tu conexión e inténtalo nuevamente.');
-    } finally { button.disabled = false; button.classList.remove('opacity-60'); }
-  };
+  window.loginProfile = async function (event) {
+    event.preventDefault();
 
-  function drawCaptcha() {
-    const canvas = $('profile-captcha-canvas'); if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    captchaCode = Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
-    ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
-    for (let i=0;i<13;i++) { ctx.strokeStyle = `rgba(${130+Math.random()*100|0},${90+Math.random()*100|0},${140+Math.random()*90|0},.35)`; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(Math.random()*canvas.width,Math.random()*canvas.height); ctx.lineTo(Math.random()*canvas.width,Math.random()*canvas.height); ctx.stroke(); }
-    for (let i=0;i<90;i++) { ctx.fillStyle='rgba(190,24,93,.18)'; ctx.fillRect(Math.random()*canvas.width,Math.random()*canvas.height,1.5,1.5); }
-    ctx.textBaseline = 'middle'; ctx.textAlign='center';
-    [...captchaCode].forEach((ch,i) => { ctx.save(); ctx.translate(25+i*42,37+(Math.random()*9-4)); ctx.rotate((Math.random()-.5)*.28); ctx.font=`900 ${27+Math.random()*5|0}px Inter, sans-serif`; ctx.fillStyle = ['#9d174d','#be185d','#7e2255','#a21caf'][i%4]; ctx.fillText(ch,0,0); ctx.restore(); });
-  }
-  window.refreshProfileCaptcha = drawCaptcha;
+    hideMessage('profile-login-error');
 
-  window.registerProfile = async function(event) {
-    event.preventDefault(); hideMessage('profile-register-error'); hideMessage('profile-register-success');
-    const nombres = $('reg-nombres').value.trim().toLocaleUpperCase('es-CO'); const apellidos = $('reg-apellidos').value.trim().toLocaleUpperCase('es-CO');
-    const telefono = $('reg-telefono').value.trim(); const password = $('reg-password').value;
-    const typedCaptcha = $('reg-captcha').value.trim().toUpperCase();
-    if (typedCaptcha !== captchaCode) { showMessage('profile-register-error','Las letras y números no coinciden. Inténtalo nuevamente.'); drawCaptcha(); $('reg-captcha').value=''; return; }
-    const button = $('profile-register-form').querySelector('button[type="submit"]');
-    button.disabled = true; button.classList.add('opacity-60');
-    try {
-      const { data: existing, error: checkError } = await clientDb.from('clientes').select('id').eq('telefono', telefono).maybeSingle();
-      if (checkError) throw checkError;
-      if (existing) { showMessage('profile-register-error','Este teléfono ya está registrado. Inicia sesión con tu contraseña actual o solicita ayuda por WhatsApp.'); return; }
-      const { data: client, error: createError } = await clientDb.from('clientes').insert([{ nombre: `${nombres} ${apellidos}`.trim(), telefono, password, cupo_total: 300000, cupo_disponible: 300000 }]).select('*').single();
-      if (createError) throw createError;
-      const { data: existingWebProfile, error: webCheckError } = await clientDb.from('clientes_web').select('*').eq('telefono', telefono).maybeSingle();
-      if (webCheckError) throw webCheckError;
-      let profile;
-      if (existingWebProfile) {
-        const linked = await clientDb.from('clientes_web').update({ cliente_id: String(client.id), nombres, apellidos, telefono }).eq('id', existingWebProfile.id).select('*').single();
-        if (linked.error) throw linked.error;
-        profile = linked.data;
-      } else {
-        const inserted = await clientDb.from('clientes_web').insert([{ cliente_id: String(client.id), nombres, apellidos, telefono, correo: '', direccion: '', barrio: '', ciudad: '' }]).select('*').single();
-        if (inserted.error) throw inserted.error;
-        profile = inserted.data;
-      }
-      currentProfile = profile; setSession(client); renderProfile(); showAccount(); await loadOrders(); redirectToCheckoutIfRequested();
-    } catch (error) {
-      console.error('Error al registrar cliente CUPISSA:', error);
-      showMessage('profile-register-error', error?.message || 'No fue posible crear tu cuenta. Revisa los datos e inténtalo nuevamente.');
-      drawCaptcha(); $('reg-captcha').value='';
-    } finally { button.disabled = false; button.classList.remove('opacity-60'); }
-  };
+    const email = cleanEmail($('login-email-profile')?.value);
+    const password = $('login-password-profile')?.value || '';
 
-  window.toggleProfileEdit = function(show) {
-    $('profile-data-view').classList.toggle('hidden', show);
-    $('profile-edit-form').classList.toggle('hidden', !show);
-    $('profile-edit-button').classList.toggle('hidden', show);
-    hideMessage('profile-edit-error');
-  };
-
-  window.saveProfileChanges = async function(event) {
-    event.preventDefault(); hideMessage('profile-edit-error');
-    const values = {
-      correo: $('edit-correo').value.trim().toLowerCase(),
-      direccion: $('edit-direccion').value.trim().toLocaleUpperCase('es-CO'),
-      barrio: $('edit-barrio').value.trim().toLocaleUpperCase('es-CO'),
-      ciudad: $('edit-ciudad').value.trim().toLocaleUpperCase('es-CO')
-    };
-    try {
-      if (values.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.correo)) throw new Error('Escribe un correo electrónico válido.');
-      const { error: profileError } = await clientDb.from('clientes_web').update(values).eq('id', currentProfile.id);
-      if (profileError) throw profileError;
-      currentProfile = { ...currentProfile, ...values };
-      renderProfile(); toggleProfileEdit(false);
-    } catch (error) {
-      console.error('Error actualizando perfil:', error);
-      showMessage('profile-edit-error', error?.message || 'No se pudieron guardar los cambios.');
-    }
-  };
-
-  async function loadOrders() {
-    const container = $('profile-orders-list');
-    if (!container || !currentProfile || !currentClient) return;
-
-    container.innerHTML = '<div class="bg-white p-5 rounded-2xl text-sm text-slate-500">Cargando tus pedidos…</div>';
-
-    // En pedidos_web hay dos relaciones distintas:
-    // cliente_web_id -> clientes_web.id
-    // cliente_id     -> clientes.id (cuenta antigua)
-    // Los pedidos creados por versiones anteriores también pueden tener
-    // ambas relaciones vacías; por eso se contempla el teléfono registrado.
-    const queries = [];
-    if (currentProfile.id) {
-      queries.push(clientDb.from('pedidos_web').select('*')
-        .eq('cliente_web_id', String(currentProfile.id))
-        .order('created_at', { ascending: false }));
-    }
-    if (currentClient.id) {
-      queries.push(clientDb.from('pedidos_web').select('*')
-        .eq('cliente_id', String(currentClient.id))
-        .order('created_at', { ascending: false }));
-    }
-    const phone = String(currentProfile.telefono || currentClient.telefono || '').trim();
-    if (phone) {
-      queries.push(clientDb.from('pedidos_web').select('*')
-        .eq('telefono', phone)
-        .order('created_at', { ascending: false }));
-    }
-
-    const results = await Promise.all(queries);
-    const errors = results.filter(result => result.error).map(result => result.error);
-    const successfulResults = results.filter(result => !result.error);
-
-    // Solo mostrar error si ninguna consulta pudo ejecutarse.
-    if (!successfulResults.length) {
-      console.error('Error cargando pedidos CUPISSA:', errors);
-      container.innerHTML = '<div class="bg-white p-5 rounded-2xl text-sm text-rose-600">No fue posible cargar tus pedidos. Inténtalo más tarde.</div>';
+    if (!validEmail(email)) {
+      showMessage('profile-login-error', 'Escribe un correo válido.');
       return;
     }
 
-    // Combinar por ID: evita duplicados si un pedido coincide por teléfono
-    // y también por alguna de las relaciones de cliente.
-    const ordersById = new Map();
-    for (const result of successfulResults) {
-      for (const order of (result.data || [])) {
-        if (order && order.id) ordersById.set(String(order.id), order);
+    const button = $('profile-login-form')
+      ?.querySelector('button[type="submit"]');
+
+    disableButton(button, true, 'Ingresando...');
+
+    try {
+      await AUTH().signIn(email, password);
+
+      const linked = await AUTH().getLinkedAccount();
+
+      if (!linked?.client) {
+        showMessage(
+          'profile-login-error',
+          'Tu correo está autenticado, pero todavía no está vinculado a una cuenta CUPISSA. Utiliza la opción para vincular tu cuenta anterior.'
+        );
+
+        showPanel('profile-legacy-link-panel');
+        return;
+      }
+
+      await loadProfile(linked.client);
+
+    } catch (error) {
+      handleError(
+        'profile-login-error',
+        error,
+        'No fue posible ingresar. Verifica tus datos.'
+      );
+    } finally {
+      disableButton(button, false);
+    }
+  };
+
+  /* ============================================================
+     GOOGLE: INICIAR SESIÓN
+     ============================================================ */
+
+  window.loginWithGoogle = async function () {
+    hideMessage('profile-login-error');
+
+    try {
+      await AUTH().signInGoogle('login');
+    } catch (error) {
+      handleError(
+        'profile-login-error',
+        error,
+        'No fue posible iniciar sesión con Google.'
+      );
+    }
+  };
+
+  /* ============================================================
+     GOOGLE: REGISTRO
+     ============================================================ */
+
+  window.registerWithGoogle = async function () {
+    hideMessage('profile-register-error');
+
+    try {
+      await AUTH().signUpGoogle();
+    } catch (error) {
+      handleError(
+        'profile-register-error',
+        error,
+        'No fue posible iniciar el registro con Google.'
+      );
+    }
+  };
+
+  async function processGoogleReturn() {
+    const intent = AUTH().getGoogleIntent();
+
+    if (!intent) return false;
+
+    const user = await AUTH().getCurrentUser();
+
+    if (!user) {
+      AUTH().clearGoogleIntent();
+      return false;
+    }
+
+    const linked = await AUTH().getLinkedAccount();
+
+    if (intent === 'login') {
+      if (linked?.client) {
+        AUTH().clearGoogleIntent();
+        await loadProfile(linked.client);
+        return true;
+      }
+
+      AUTH().clearGoogleIntent();
+
+      showAuth();
+      showPanel('profile-legacy-link-panel');
+
+      const metadata = user.user_metadata || {};
+      const name = splitName(
+        metadata.full_name || metadata.name || ''
+      );
+
+      $('legacy-link-nombres').value =
+        metadata.given_name || name.nombres;
+
+      $('legacy-link-apellidos').value =
+        metadata.family_name || name.apellidos;
+
+      $('legacy-link-telefono').value =
+        metadata.telefono || '';
+
+      showMessage(
+        'profile-legacy-link-error',
+        'Tu cuenta de Google no está vinculada a un cliente CUPISSA. Si ya tenías una cuenta, vincúlala aquí.'
+      );
+
+      return true;
+    }
+
+    if (intent === 'register') {
+      if (linked?.client) {
+        AUTH().clearGoogleIntent();
+        await loadProfile(linked.client);
+        return true;
+      }
+
+      pendingGoogleEmail = cleanEmail(user.email);
+
+      if (!pendingGoogleEmail) {
+        throw new Error(
+          'Google no devolvió un correo electrónico válido.'
+        );
+      }
+
+      $('profile-google-otp-email').textContent =
+        pendingGoogleEmail;
+
+      showAuth();
+      showPanel('profile-google-otp-panel');
+
+      hideFlowMessage('profile-google-otp-error');
+      hideFlowMessage('profile-google-otp-success');
+
+      await AUTH().sendGoogleRegistrationOtp(pendingGoogleEmail);
+
+      showFlowMessage(
+        'profile-google-otp-success',
+        'Te enviamos un código de seis dígitos. Revisa tu correo.',
+        true
+      );
+
+      return true;
+    }
+
+    return false;
+  }
+
+  window.verifyGoogleRegistrationOtp = async function (event) {
+    event.preventDefault();
+
+    hideFlowMessage('profile-google-otp-error');
+    hideFlowMessage('profile-google-otp-success');
+
+    const code = $('profile-google-otp-code')?.value.trim();
+
+    if (!validOtp(code)) {
+      showFlowMessage(
+        'profile-google-otp-error',
+        'Escribe los seis dígitos del código.'
+      );
+      return;
+    }
+
+    try {
+      await AUTH().verifyGoogleRegistrationOtp(
+        pendingGoogleEmail,
+        code
+      );
+
+      googleOtpVerified = true;
+
+      const googleData = await AUTH().getGoogleUserData();
+
+      $('google-reg-email').value = googleData.email;
+
+      const name = splitName(googleData.nombres);
+
+      $('google-reg-nombres').value =
+        googleData.nombres || name.nombres;
+
+      $('google-reg-apellidos').value =
+        googleData.apellidos || name.apellidos;
+
+      showPanel('profile-google-register-panel');
+
+      AUTH().clearGoogleIntent();
+
+    } catch (error) {
+      console.error('[CUPISSA GOOGLE OTP]', error);
+
+      showFlowMessage(
+        'profile-google-otp-error',
+        friendlyError(error)
+      );
+    }
+  };
+
+  window.resendGoogleRegistrationOtp = async function () {
+    hideFlowMessage('profile-google-otp-error');
+    hideFlowMessage('profile-google-otp-success');
+
+    try {
+      if (!pendingGoogleEmail) {
+        const user = await AUTH().getCurrentUser();
+        pendingGoogleEmail = cleanEmail(user?.email);
+      }
+
+      await AUTH().sendGoogleRegistrationOtp(pendingGoogleEmail);
+
+      showFlowMessage(
+        'profile-google-otp-success',
+        'Te enviamos un nuevo código. Revisa tu correo.',
+        true
+      );
+
+    } catch (error) {
+      showFlowMessage(
+        'profile-google-otp-error',
+        friendlyError(error)
+      );
+    }
+  };
+
+  window.completeGoogleRegistration = async function () {
+    hideFlowMessage('profile-google-register-error');
+
+    if (!googleOtpVerified) {
+      showFlowMessage(
+        'profile-google-register-error',
+        'Primero debes verificar el código enviado a tu correo.'
+      );
+      return;
+    }
+
+    const nombres = cleanName($('google-reg-nombres')?.value);
+    const apellidos = cleanName($('google-reg-apellidos')?.value);
+    const telefono = cleanPhone($('google-reg-telefono')?.value);
+
+    if (!nombres || !apellidos || !telefono) {
+      showFlowMessage(
+        'profile-google-register-error',
+        'Completa tus nombres, apellidos y número de teléfono.'
+      );
+      return;
+    }
+
+    const button = $('profile-google-create-client');
+    disableButton(button, true, 'Creando cuenta...');
+
+    try {
+      await AUTH().checkPhoneAvailable(telefono);
+
+      await AUTH().createNewClient({
+        telefono,
+        nombres,
+        apellidos
+      });
+
+      const linked = await AUTH().getLinkedAccount();
+
+      if (!linked?.client) {
+        throw new Error(
+          'No pudimos cargar tu cuenta. Inicia sesión nuevamente.'
+        );
+      }
+
+      googleOtpVerified = false;
+      pendingGoogleEmail = '';
+
+      await loadProfile(linked.client);
+
+    } catch (error) {
+      console.error('[CUPISSA GOOGLE REGISTRO]', error);
+
+      showFlowMessage(
+        'profile-google-register-error',
+        friendlyError(error)
+      );
+    } finally {
+      disableButton(button, false);
+    }
+  };
+
+  window.cancelGoogleRegistration = async function () {
+    pendingGoogleEmail = '';
+    googleOtpVerified = false;
+
+    try {
+      await AUTH().signOut();
+    } catch (error) {
+      console.warn(error);
+    }
+
+    AUTH().clearGoogleIntent();
+
+    $('profile-google-otp-code').value = '';
+
+    showAuth();
+    showAuthMode('register');
+  };
+
+  /* ============================================================
+     REGISTRO TRADICIONAL
+     ============================================================ */
+
+  window.registerProfile = async function (event) {
+    event.preventDefault();
+
+    hideMessage('profile-register-error');
+    hideMessage('profile-register-success');
+
+    const nombres = cleanName($('reg-nombres')?.value);
+    const apellidos = cleanName($('reg-apellidos')?.value);
+    const telefono = cleanPhone($('reg-telefono')?.value);
+    const email = cleanEmail($('reg-email')?.value);
+    const password = $('reg-password')?.value || '';
+
+    if (!nombres || !apellidos || !telefono || !email || !password) {
+      showMessage(
+        'profile-register-error',
+        'Completa todos los campos para registrarte.'
+      );
+      return;
+    }
+
+    if (!validEmail(email)) {
+      showMessage(
+        'profile-register-error',
+        'Escribe un correo electrónico válido.'
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      showMessage(
+        'profile-register-error',
+        'La contraseña debe tener al menos seis caracteres.'
+      );
+      return;
+    }
+
+    const button = $('profile-register-form')
+      ?.querySelector('button[type="submit"]');
+
+    disableButton(button, true, 'Enviando código...');
+
+    try {
+      await AUTH().checkPhoneAvailable(telefono);
+
+      const result = await AUTH().signUp({
+        email,
+        password,
+        nombres,
+        apellidos,
+        telefono
+      });
+
+      pendingSignup = {
+        email,
+        telefono,
+        nombres,
+        apellidos
+      };
+
+      sessionStorage.setItem(
+        'cupissa_pending_signup',
+        JSON.stringify(pendingSignup)
+      );
+
+      $('profile-signup-otp-email').textContent = email;
+
+      $('profile-signup-otp-code').value = '';
+
+      $('profile-register-form').reset();
+
+      showPanel('profile-signup-otp-panel');
+
+      showFlowMessage(
+        'profile-signup-otp-success',
+        'Te enviamos un código de seis dígitos. Revisa tu correo.',
+        true
+      );
+
+      if (result?.session) {
+        console.info(
+          '[CUPISSA] Supabase devolvió sesión al registrar.'
+        );
+      }
+
+    } catch (error) {
+      console.error('[CUPISSA REGISTRO]', error);
+
+      showMessage(
+        'profile-register-error',
+        friendlyError(error)
+      );
+    } finally {
+      disableButton(button, false);
+    }
+  };
+
+  window.verifyProfileSignupOtp = async function (event) {
+    event.preventDefault();
+
+    hideFlowMessage('profile-signup-otp-error');
+    hideFlowMessage('profile-signup-otp-success');
+
+    if (!pendingSignup) {
+      try {
+        pendingSignup = JSON.parse(
+          sessionStorage.getItem('cupissa_pending_signup') || 'null'
+        );
+      } catch (_) {
+        pendingSignup = null;
       }
     }
+
+    if (!pendingSignup?.email) {
+      showFlowMessage(
+        'profile-signup-otp-error',
+        'No encontramos los datos del registro. Inicia nuevamente el proceso.'
+      );
+      return;
+    }
+
+    const code = $('profile-signup-otp-code')?.value.trim();
+
+    if (!validOtp(code)) {
+      showFlowMessage(
+        'profile-signup-otp-error',
+        'Escribe los seis dígitos del código.'
+      );
+      return;
+    }
+
+    const button = $('profile-signup-otp-form')
+      ?.querySelector('button[type="submit"]');
+
+    disableButton(button, true, 'Verificando...');
+
+    try {
+      await AUTH().verifySignupOtp(
+        pendingSignup.email,
+        code
+      );
+
+      await AUTH().createNewClient({
+        telefono: pendingSignup.telefono,
+        nombres: pendingSignup.nombres,
+        apellidos: pendingSignup.apellidos
+      });
+
+      sessionStorage.removeItem('cupissa_pending_signup');
+      pendingSignup = null;
+
+      const linked = await AUTH().getLinkedAccount();
+
+      if (!linked?.client) {
+        throw new Error(
+          'Tu correo fue verificado, pero no pudimos cargar el perfil. Inicia sesión para continuar.'
+        );
+      }
+
+      await loadProfile(linked.client);
+
+    } catch (error) {
+      console.error('[CUPISSA VERIFICAR REGISTRO]', error);
+
+      showFlowMessage(
+        'profile-signup-otp-error',
+        friendlyError(error)
+      );
+    } finally {
+      disableButton(button, false);
+    }
+  };
+
+  window.resendProfileSignupOtp = async function () {
+    hideFlowMessage('profile-signup-otp-error');
+    hideFlowMessage('profile-signup-otp-success');
+
+    if (!pendingSignup) {
+      try {
+        pendingSignup = JSON.parse(
+          sessionStorage.getItem('cupissa_pending_signup') || 'null'
+        );
+      } catch (_) {
+        pendingSignup = null;
+      }
+    }
+
+    if (!pendingSignup?.email) {
+      showFlowMessage(
+        'profile-signup-otp-error',
+        'No encontramos el correo del registro. Inicia nuevamente.'
+      );
+      return;
+    }
+
+    const button = $('profile-signup-otp-resend');
+    disableButton(button, true, 'Enviando...');
+
+    try {
+      await AUTH().resendSignupOtp(pendingSignup.email);
+
+      showFlowMessage(
+        'profile-signup-otp-success',
+        'Te enviamos un nuevo código. Revisa tu correo.',
+        true
+      );
+
+    } catch (error) {
+      showFlowMessage(
+        'profile-signup-otp-error',
+        friendlyError(error)
+      );
+    } finally {
+      disableButton(button, false);
+    }
+  };
+
+  window.cancelProfileSignupOtp = async function () {
+    pendingSignup = null;
+
+    sessionStorage.removeItem('cupissa_pending_signup');
+
+    try {
+      await AUTH().signOut();
+    } catch (error) {
+      console.warn(error);
+    }
+
+    showAuth();
+    showAuthMode('register');
+  };
+
+  /* ============================================================
+     RECUPERACIÓN DE CONTRASEÑA
+     ============================================================ */
+
+  window.sendProfileRecoveryOtp = async function (event) {
+    event.preventDefault();
+
+    hideFlowMessage('profile-recovery-error');
+    hideFlowMessage('profile-recovery-success');
+
+    const email = cleanEmail($('profile-recovery-email')?.value);
+
+    if (!validEmail(email)) {
+      showFlowMessage(
+        'profile-recovery-error',
+        'Escribe un correo electrónico válido.'
+      );
+      return;
+    }
+
+    const button = $('profile-recovery-form')
+      ?.querySelector('button[type="submit"]');
+
+    disableButton(button, true, 'Enviando...');
+
+    try {
+      await AUTH().sendPasswordRecoveryOtp(email);
+
+      pendingRecoveryEmail = email;
+
+      $('profile-recovery-verify-form')?.classList.remove('hidden');
+
+      showFlowMessage(
+        'profile-recovery-success',
+        'Si el correo está registrado, recibirás un código para recuperar tu contraseña.',
+        true
+      );
+
+    } catch (error) {
+      showFlowMessage(
+        'profile-recovery-error',
+        friendlyError(error)
+      );
+    } finally {
+      disableButton(button, false);
+    }
+  };
+
+  window.verifyProfileRecoveryOtp = async function (event) {
+    event.preventDefault();
+
+    hideFlowMessage('profile-recovery-error');
+    hideFlowMessage('profile-recovery-success');
+
+    const code = $('profile-recovery-code')?.value.trim();
+    const password = $('profile-new-password')?.value || '';
+    const confirm = $('profile-new-password-confirm')?.value || '';
+
+    if (!pendingRecoveryEmail) {
+      showFlowMessage(
+        'profile-recovery-error',
+        'Primero solicita el código de recuperación.'
+      );
+      return;
+    }
+
+    if (!validOtp(code)) {
+      showFlowMessage(
+        'profile-recovery-error',
+        'Escribe el código de seis dígitos.'
+      );
+      return;
+    }
+
+    if (password.length < 6) {
+      showFlowMessage(
+        'profile-recovery-error',
+        'La contraseña debe tener al menos seis caracteres.'
+      );
+      return;
+    }
+
+    if (password !== confirm) {
+      showFlowMessage(
+        'profile-recovery-error',
+        'Las contraseñas no coinciden.'
+      );
+      return;
+    }
+
+    const button = $('profile-recovery-verify-form')
+      ?.querySelector('button[type="submit"]');
+
+    disableButton(button, true, 'Verificando...');
+
+    try {
+      await AUTH().verifyPasswordRecoveryOtp(
+        pendingRecoveryEmail,
+        code
+      );
+
+      await AUTH().updatePassword(password);
+
+      pendingRecoveryEmail = '';
+
+      $('profile-recovery-form')?.reset();
+      $('profile-recovery-verify-form')?.reset();
+
+      $('profile-recovery-verify-form')?.classList.add('hidden');
+
+      showFlowMessage(
+        'profile-recovery-success',
+        'Tu contraseña fue actualizada. Ya puedes iniciar sesión.',
+        true
+      );
+
+      setTimeout(() => {
+        showAuthMode('login');
+      }, 1800);
+
+    } catch (error) {
+      showFlowMessage(
+        'profile-recovery-error',
+        friendlyError(error)
+      );
+    } finally {
+      disableButton(button, false);
+    }
+  };
+
+  /* ============================================================
+     VINCULAR CUENTA ANTERIOR
+     ============================================================ */
+
+  window.submitLegacyAccountLink = async function (event) {
+    event.preventDefault();
+
+    hideFlowMessage('profile-legacy-link-error');
+
+    const telefono = cleanPhone($('legacy-link-telefono')?.value);
+    const password = $('legacy-link-password')?.value || '';
+    const nombres = cleanName($('legacy-link-nombres')?.value);
+    const apellidos = cleanName($('legacy-link-apellidos')?.value);
+
+    if (!telefono || !password || !nombres || !apellidos) {
+      showFlowMessage(
+        'profile-legacy-link-error',
+        'Completa todos los datos para vincular tu cuenta anterior.'
+      );
+      return;
+    }
+
+    const button = $('profile-legacy-link-form')
+      ?.querySelector('button[type="submit"]');
+
+    disableButton(button, true, 'Vinculando...');
+
+    try {
+      await AUTH().linkLegacyAccount({
+        telefono,
+        password,
+        nombres,
+        apellidos
+      });
+
+      const linked = await AUTH().getLinkedAccount();
+
+      if (!linked?.client) {
+        throw new Error(
+          'No pudimos recuperar tu perfil. Vuelve a iniciar sesión.'
+        );
+      }
+
+      await loadProfile(linked.client);
+
+    } catch (error) {
+      console.error('[CUPISSA VINCULACIÓN]', error);
+
+      showFlowMessage(
+        'profile-legacy-link-error',
+        friendlyError(error)
+      );
+    } finally {
+      disableButton(button, false);
+    }
+  };
+
+  /* ============================================================
+     EDICIÓN DE PERFIL
+     ============================================================ */
+
+  window.toggleProfileEdit = function (show) {
+    $('profile-data-view')?.classList.toggle('hidden', show);
+    $('profile-edit-form')?.classList.toggle('hidden', !show);
+    $('profile-edit-button')?.classList.toggle('hidden', show);
+
+    hideMessage('profile-edit-error');
+  };
+
+  window.saveProfileChanges = async function (event) {
+    event.preventDefault();
+
+    hideMessage('profile-edit-error');
+
+    if (!currentProfile) {
+      showMessage(
+        'profile-edit-error',
+        'No encontramos tu perfil. Inicia sesión nuevamente.'
+      );
+      return;
+    }
+
+    const values = {
+      direccion: cleanName($('edit-direccion')?.value),
+      barrio: cleanName($('edit-barrio')?.value),
+      ciudad: cleanName($('edit-ciudad')?.value)
+    };
+
+    const newEmail = cleanEmail($('edit-correo')?.value);
+    const oldEmail = cleanEmail(currentProfile.correo);
+
+    if (newEmail && !validEmail(newEmail)) {
+      showMessage(
+        'profile-edit-error',
+        'Escribe un correo electrónico válido.'
+      );
+      return;
+    }
+
+    try {
+      if (newEmail && newEmail !== oldEmail) {
+        await AUTH().sendEmailChangeOtp(newEmail);
+
+        $('profile-email-otp-panel')?.classList.remove('hidden');
+
+        showMessage(
+          'profile-edit-error',
+          'Enviamos un código de confirmación a tu nuevo correo. Verifícalo para completar el cambio.',
+          true
+        );
+      }
+
+      const { error } = await clientDb
+        .from('clientes_web')
+        .update(values)
+        .eq('id', currentProfile.id);
+
+      if (error) throw error;
+
+      currentProfile = {
+        ...currentProfile,
+        ...values
+      };
+
+      renderProfile();
+      toggleProfileEdit(false);
+
+    } catch (error) {
+      handleError(
+        'profile-edit-error',
+        error,
+        'No se pudieron guardar los cambios.'
+      );
+    }
+  };
+
+  window.verifyProfileEmailChange = async function (event) {
+    event.preventDefault();
+
+    hideFlowMessage('profile-email-otp-error');
+    hideFlowMessage('profile-email-otp-success');
+
+    const email = cleanEmail($('edit-correo')?.value);
+    const code = $('profile-email-otp-code')?.value.trim();
+
+    if (!validOtp(code)) {
+      showFlowMessage(
+        'profile-email-otp-error',
+        'Escribe los seis dígitos del código.'
+      );
+      return;
+    }
+
+    try {
+      await AUTH().verifyEmailChangeOtp(email, code);
+
+      currentProfile.correo = email;
+      currentClient.correo = email;
+
+      renderProfile();
+
+      $('profile-email-otp-panel')?.classList.add('hidden');
+
+      showFlowMessage(
+        'profile-email-otp-success',
+        'Tu correo fue actualizado correctamente.',
+        true
+      );
+
+    } catch (error) {
+      showFlowMessage(
+        'profile-email-otp-error',
+        friendlyError(error)
+      );
+    }
+  };
+
+  /* ============================================================
+     CARGA DE PEDIDOS
+     Conserva las tres vías de búsqueda:
+     - cliente_web_id
+     - cliente_id
+     - teléfono
+     ============================================================ */
+
+  async function loadOrders() {
+    const container = $('profile-orders-list');
+
+    if (!container || !currentProfile || !currentClient) return;
+
+    container.innerHTML = `
+      <div class="bg-white p-5 rounded-2xl text-sm text-slate-500">
+        Cargando tus pedidos...
+      </div>
+    `;
+
+    const queries = [];
+
+    if (currentProfile.id) {
+      queries.push(
+        clientDb
+          .from('pedidos_web')
+          .select('*')
+          .eq('cliente_web_id', String(currentProfile.id))
+          .order('created_at', { ascending: false })
+      );
+    }
+
+    if (currentClient.id) {
+      queries.push(
+        clientDb
+          .from('pedidos_web')
+          .select('*')
+          .eq('cliente_id', String(currentClient.id))
+          .order('created_at', { ascending: false })
+      );
+    }
+
+    const phone = cleanPhone(
+      currentProfile.telefono || currentClient.telefono
+    );
+
+    if (phone) {
+      queries.push(
+        clientDb
+          .from('pedidos_web')
+          .select('*')
+          .eq('telefono', phone)
+          .order('created_at', { ascending: false })
+      );
+    }
+
+    if (!queries.length) {
+      container.innerHTML =
+        '<div class="bg-white p-5 rounded-2xl text-sm text-slate-500">No encontramos pedidos.</div>';
+      return;
+    }
+
+    const results = await Promise.all(queries);
+
+    const errors = results
+      .filter(result => result.error)
+      .map(result => result.error);
+
+    const successfulResults = results.filter(
+      result => !result.error
+    );
+
+    if (!successfulResults.length) {
+      console.error('[CUPISSA PEDIDOS]', errors);
+
+      container.innerHTML = `
+        <div class="bg-white p-5 rounded-2xl text-sm text-rose-600">
+          No fue posible cargar tus pedidos. Inténtalo más tarde.
+        </div>
+      `;
+
+      return;
+    }
+
+    const ordersById = new Map();
+
+    for (const result of successfulResults) {
+      for (const order of result.data || []) {
+        if (order?.id) {
+          ordersById.set(String(order.id), order);
+        }
+      }
+    }
+
     const orders = [...ordersById.values()].sort((a, b) =>
       new Date(b.created_at || b.updated_at || 0).getTime() -
       new Date(a.created_at || a.updated_at || 0).getTime()
     );
 
-    $('profile-orders-count').textContent = `${orders.length} pedido${orders.length === 1 ? '' : 's'}`;
+    $('profile-orders-count').textContent =
+      `${orders.length} pedido${orders.length === 1 ? '' : 's'}`;
+
     window.__cupissaWebOrders = orders;
 
     if (!orders.length) {
-      // Dejar en consola información útil para distinguir ausencia real de
-      // pedidos de un bloqueo por políticas RLS o por columnas inexistentes.
-      if (errors.length) console.warn('Algunas búsquedas de pedidos fallaron:', errors);
-      container.innerHTML = '<div class="bg-white p-7 rounded-2xl border border-slate-100 text-center"><i class="fa-solid fa-box-open text-3xl text-pink-200"></i><p class="font-bold text-slate-700 mt-3">Todavía no tienes pedidos registrados</p><p class="text-xs text-slate-400 mt-1">Si ya pagaste, verifica que el pedido tenga tu teléfono o tu identificador de cliente en pedidos_web.</p></div>';
+      if (errors.length) {
+        console.warn('[CUPISSA PEDIDOS] Algunas búsquedas fallaron:', errors);
+      }
+
+      container.innerHTML = `
+        <div class="bg-white p-7 rounded-2xl border border-slate-100 text-center">
+          <i class="fa-solid fa-box-open text-3xl text-pink-200"></i>
+          <p class="font-bold text-slate-700 mt-3">
+            Todavía no tienes pedidos registrados
+          </p>
+          <p class="text-xs text-slate-400 mt-1">
+            Cuando realices una compra, aparecerá aquí.
+          </p>
+        </div>
+      `;
+
       return;
     }
 
     container.innerHTML = orders.map(order => {
-      const products = Array.isArray(order.productos) ? order.productos : [];
+      const products = Array.isArray(order.productos)
+        ? order.productos
+        : [];
 
-      // Las tarjetas deben combinar las fotos generales del pedido con las
-      // fotos guardadas dentro de cada producto. En pedidos existentes,
-      // order.imagenes puede ser [] aunque cada producto sí tenga imagen_url.
-      const imageUrl = value => {
+      const collectedPhotos = [];
+
+      function imageUrl(value) {
         if (!value) return '';
-        if (typeof value === 'string') return value.trim();
+
+        if (typeof value === 'string') {
+          return value.trim();
+        }
+
         if (typeof value === 'object') {
           return String(
-            value.url || value.imagen_url || value.src || value.path || value.publicUrl || ''
+            value.url ||
+            value.imagen_url ||
+            value.src ||
+            value.path ||
+            value.publicUrl ||
+            ''
           ).trim();
         }
-        return '';
-      };
-      const collectedPhotos = [];
-      const addPhoto = value => {
-        const url = imageUrl(value);
-        if (url && !collectedPhotos.includes(url)) collectedPhotos.push(url);
-      };
 
-      if (Array.isArray(order.imagenes)) order.imagenes.forEach(addPhoto);
-      else if (order.imagenes) addPhoto(order.imagenes);
+        return '';
+      }
+
+      function addPhoto(value) {
+        const url = imageUrl(value);
+
+        if (url && !collectedPhotos.includes(url)) {
+          collectedPhotos.push(url);
+        }
+      }
+
+      if (Array.isArray(order.imagenes)) {
+        order.imagenes.forEach(addPhoto);
+      } else if (order.imagenes) {
+        addPhoto(order.imagenes);
+      }
 
       products.forEach(item => {
         if (!item || typeof item !== 'object') return;
+
         [
-          item.imagen_url, item.imagen, item.foto_url, item.foto,
-          item.image_url, item.image, item.url_imagen, item.url
+          item.imagen_url,
+          item.imagen,
+          item.foto_url,
+          item.foto,
+          item.image_url,
+          item.image,
+          item.url_imagen,
+          item.url
         ].forEach(addPhoto);
-        if (Array.isArray(item.imagenes)) item.imagenes.forEach(addPhoto);
-        if (Array.isArray(item.fotos)) item.fotos.forEach(addPhoto);
+
+        if (Array.isArray(item.imagenes)) {
+          item.imagenes.forEach(addPhoto);
+        }
+
+        if (Array.isArray(item.fotos)) {
+          item.fotos.forEach(addPhoto);
+        }
       });
 
       const photos = collectedPhotos.slice(0, 4);
+
       const photoTiles = photos.length
-        ? photos.map(url => `<img class="profile-order-photo" src="${safe(url)}" alt="Producto del pedido" loading="lazy" onerror="this.style.display='none'">`).join('')
-        : '<div class="profile-order-photo grid place-items-center text-slate-300"><i class="fa-solid fa-image"></i></div>';
+        ? photos.map(url => `
+            <img
+              class="profile-order-photo"
+              src="${safe(url)}"
+              alt="Producto del pedido"
+              loading="lazy"
+              onerror="this.style.display='none'"
+            >
+          `).join('')
+        : `
+            <div class="profile-order-photo grid place-items-center text-slate-300">
+              <i class="fa-solid fa-image"></i>
+            </div>
+          `;
+
       const remaining = order.restante != null
         ? order.restante
-        : Math.max(0, Number(order.total || 0) + Number(order.envio ?? order.domicilio_envio ?? 0) - Number(order.anticipo || 0));
-      return `<button type="button" class="profile-order-card" onclick="openProfileOrder('${safe(order.id)}')"><div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div class="flex items-center gap-3 min-w-0"><div class="grid grid-cols-2 gap-1">${photoTiles}</div><div class="min-w-0"><p class="font-black text-slate-900">${safe(order.codigo || order.numero_pedido || 'Pedido CUP')}</p><p class="text-[11px] text-slate-400 mt-1">${products.length} producto(s) · ${safe(order.tipo_pedido || order.tipo_servicio || 'VENTA')}</p><p class="text-xs font-bold text-slate-700 mt-2">Restante: ${money(remaining)}</p></div></div><div class="flex sm:flex-col items-center sm:items-end justify-between gap-2"><span class="profile-status">${safe(order.estado || 'AGENDADO')}</span><span class="text-[10px] text-pink-600 font-black">Ver detalle <i class="fa-solid fa-chevron-right"></i></span></div></div></button>`;
+        : Math.max(
+            0,
+            Number(order.total || 0) +
+            Number(order.envio ?? order.domicilio_envio ?? 0) -
+            Number(order.anticipo || 0)
+          );
+
+      return `
+        <button
+          type="button"
+          class="profile-order-card"
+          onclick="openProfileOrder('${safe(order.id)}')"
+        >
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="grid grid-cols-2 gap-1">
+                ${photoTiles}
+              </div>
+
+              <div class="min-w-0">
+                <p class="font-black text-slate-900">
+                  ${safe(order.codigo || order.numero_pedido || 'Pedido CUP')}
+                </p>
+
+                <p class="text-[11px] text-slate-400 mt-1">
+                  ${products.length} producto(s) ·
+                  ${safe(order.tipo_pedido || order.tipo_servicio || 'VENTA')}
+                </p>
+
+                <p class="text-xs font-bold text-slate-700 mt-2">
+                  Restante: ${money(remaining)}
+                </p>
+              </div>
+            </div>
+
+            <div class="flex sm:flex-col items-center sm:items-end justify-between gap-2">
+              <span class="profile-status">
+                ${safe(order.estado || 'AGENDADO')}
+              </span>
+
+              <span class="text-[10px] text-pink-600 font-black">
+                Ver detalle
+                <i class="fa-solid fa-chevron-right"></i>
+              </span>
+            </div>
+          </div>
+        </button>
+      `;
     }).join('');
   }
 
-  window.openProfileOrder = function(id) {
-    const order = (window.__cupissaWebOrders || []).find(item => String(item.id) === String(id)); if (!order) return;
-    const products = Array.isArray(order.productos) ? order.productos : [];
-    const images = Array.isArray(order.imagenes) ? order.imagenes : [];
-    $('profile-order-modal-title').textContent = order.codigo || order.numero_pedido || 'Detalle del pedido';
+  /* ============================================================
+     DETALLE DE PEDIDO
+     ============================================================ */
+
+  window.openProfileOrder = function (id) {
+    const order = (window.__cupissaWebOrders || [])
+      .find(item => String(item.id) === String(id));
+
+    if (!order) return;
+
+    const products = Array.isArray(order.productos)
+      ? order.productos
+      : [];
+
+    const images = Array.isArray(order.imagenes)
+      ? order.imagenes
+      : [];
+
+    $('profile-order-modal-title').textContent =
+      order.codigo ||
+      order.numero_pedido ||
+      'Detalle del pedido';
+
+    const fields = [
+      ['Tipo', order.tipo_pedido || order.tipo_servicio],
+      ['Fecha de entrega', order.fecha_entrega],
+      ['Estado', order.estado],
+      ['Total', money(order.total)],
+      ['Domicilio / envío', money(order.envio ?? order.domicilio_envio)],
+      ['Anticipo', money(order.anticipo)],
+      ['Restante', money(order.restante)],
+      ['Contacto', order.telefono || order.contacto],
+      [
+        'Ubicación',
+        [
+          order.direccion,
+          order.barrio,
+          order.ciudad
+        ].filter(Boolean).join(', ') || order.ubicacion
+      ]
+    ];
+
     $('profile-order-detail').innerHTML = `
-      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">${[['Tipo',order.tipo_pedido || order.tipo_servicio],['Fecha de entrega',order.fecha_entrega],['Estado',order.estado],['Total',money(order.total)],['Domicilio / envío',money(order.envio ?? order.domicilio_envio)],['Anticipo',money(order.anticipo)],['Restante',money(order.restante)],['Contacto',order.telefono || order.contacto],['Ubicación',[order.direccion,order.barrio,order.ciudad].filter(Boolean).join(', ') || order.ubicacion]].map(([a,b])=>`<div class="profile-field"><span>${safe(a)}</span><strong>${safe(b || '—')}</strong></div>`).join('')}</div>
-      <h3 class="text-sm font-black text-slate-900 mb-3">Productos solicitados</h3>
-      <div class="space-y-3">${products.map((p,i)=>`<div class="border border-slate-100 rounded-xl p-3 flex gap-3">${p.imagen_url?`<img src="${safe(p.imagen_url)}" class="w-20 h-20 rounded-lg object-cover">`:''}<div class="min-w-0 flex-1"><p class="font-black text-sm text-slate-900">${i+1}. ${safe(p.nombre || p.producto || 'Producto')}</p><p class="text-xs text-slate-500 mt-1">${safe(p.referencia || '')} · Talla: ${safe(p.talla || '—')} · Color: ${safe(p.color || '—')}</p><p class="text-xs text-slate-600 mt-1">Cantidad: ${safe(p.cantidad || 1)} · Precio: ${money(p.precio)}${p.dias_alquiler ? ` · Alquiler: ${safe(p.dias_alquiler)} día(s)` : ''}</p></div></div>`).join('') || '<p class="text-xs text-slate-400">Sin detalle de productos.</p>'}</div>
-      ${images.length?`<h3 class="text-sm font-black text-slate-900 mt-5 mb-3">Fotografías del pedido</h3><div class="grid grid-cols-2 sm:grid-cols-4 gap-2">${images.map(url=>`<a href="${safe(url)}" target="_blank" rel="noopener"><img src="${safe(url)}" class="w-full aspect-square object-cover rounded-xl"></a>`).join('')}</div>`:''}`;
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-5">
+        ${fields.map(([label, value]) => `
+          <div class="profile-field">
+            <span>${safe(label)}</span>
+            <strong>${safe(value || '—')}</strong>
+          </div>
+        `).join('')}
+      </div>
+
+      <h3 class="text-sm font-black text-slate-900 mb-3">
+        Productos solicitados
+      </h3>
+
+      <div class="space-y-3">
+        ${
+          products.map((product, index) => {
+            const productImage =
+              product.imagen_url ||
+              product.foto_url ||
+              product.image_url ||
+              product.imagen ||
+              '';
+
+            return `
+              <div class="border border-slate-100 rounded-xl p-3 flex gap-3">
+                ${
+                  productImage
+                    ? `
+                      <img
+                        src="${safe(productImage)}"
+                        alt="Producto"
+                        class="w-20 h-20 rounded-lg object-cover"
+                      >
+                    `
+                    : ''
+                }
+
+                <div class="min-w-0 flex-1">
+                  <p class="font-black text-sm text-slate-900">
+                    ${index + 1}. ${safe(product.nombre || product.producto || 'Producto')}
+                  </p>
+
+                  <p class="text-xs text-slate-500 mt-1">
+                    ${safe(product.referencia || '')}
+                    · Talla: ${safe(product.talla || '—')}
+                    · Color: ${safe(product.color || '—')}
+                  </p>
+
+                  <p class="text-xs text-slate-600 mt-1">
+                    Cantidad: ${safe(product.cantidad || 1)}
+                    · Precio: ${money(product.precio)}
+                    ${
+                      product.dias_alquiler
+                        ? ` · Alquiler: ${safe(product.dias_alquiler)} día(s)`
+                        : ''
+                    }
+                  </p>
+                </div>
+              </div>
+            `;
+          }).join('')
+          || '<p class="text-xs text-slate-400">Sin detalle de productos.</p>'
+        }
+      </div>
+
+      ${
+        images.length
+          ? `
+            <h3 class="text-sm font-black text-slate-900 mt-5 mb-3">
+              Fotografías del pedido
+            </h3>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              ${images.map(value => {
+                const url = typeof value === 'string'
+                  ? value
+                  : value?.url || value?.imagen_url || '';
+
+                return url ? `
+                  <a href="${safe(url)}" target="_blank" rel="noopener">
+                    <img
+                      src="${safe(url)}"
+                      alt="Fotografía del pedido"
+                      class="w-full aspect-square object-cover rounded-xl"
+                    >
+                  </a>
+                ` : '';
+              }).join('')}
+            </div>
+          `
+          : ''
+      }
+    `;
+
     $('profile-order-modal').classList.remove('hidden');
   };
-  window.closeProfileOrder = () => $('profile-order-modal').classList.add('hidden');
 
-  window.requestProfilePasswordChange = function(event) {
-    event.preventDefault();
-    const phone = $('login-phone-profile')?.value?.trim() || currentProfile?.telefono || currentClient?.telefono || '';
-    const message = `Hola CUPISSA, solicito ayuda para cambiar la contraseña de mi cuenta. Mi teléfono registrado es ${phone || 'pendiente por confirmar'}.`;
-    window.open(`https://wa.me/${window.CUPISSA_WHATSAPP || '573245680018'}?text=${encodeURIComponent(message)}`, '_blank', 'noopener');
+  window.closeProfileOrder = function () {
+    $('profile-order-modal')?.classList.add('hidden');
   };
 
-  window.logoutProfile = function() {
-    currentClient = null; currentProfile = null; localStorage.removeItem('cupissa_client_session');
-    $('profile-account-section').classList.add('hidden'); showAuth(); showAuthMode('login'); $('profile-login-form').reset();
+  /* ============================================================
+     CERRAR SESIÓN
+     ============================================================ */
+
+  window.logoutProfile = async function () {
+    try {
+      await AUTH().signOut();
+    } catch (error) {
+      console.error('[CUPISSA CIERRE SESIÓN]', error);
+    }
+
+    currentClient = null;
+    currentProfile = null;
+
+    localStorage.removeItem('cupissa_client_session');
+
+    showAuth();
+    showAuthMode('login');
+
+    $('profile-login-form')?.reset();
   };
-  window.returnToCatalog = function() {
-    if (new URLSearchParams(location.search).get('embedded') === '1' && window.parent !== window) {
-      window.parent.postMessage({ type: 'CUPISSA_PROFILE_CLOSE' }, '*');
-    } else { location.href = '/catalogo'; }
+
+  /* ============================================================
+     VOLVER AL CATÁLOGO
+     ============================================================ */
+
+  window.returnToCatalog = function () {
+    if (
+      new URLSearchParams(location.search).get('embedded') === '1' &&
+      window.parent !== window
+    ) {
+      window.parent.postMessage(
+        { type: 'CUPISSA_PROFILE_CLOSE' },
+        '*'
+      );
+    } else {
+      location.href = '/catalogo';
+    }
   };
+
+  /* ============================================================
+     NORMALIZAR CAMPOS
+     ============================================================ */
+
+  function configureInputs() {
+    document.querySelectorAll(
+      '#profile-register-form input:not([type="password"]):not([type="email"]), ' +
+      '#profile-edit-form input:not([type="password"]):not([type="email"]), ' +
+      '#profile-google-register-panel input:not([type="email"])'
+    ).forEach(input => {
+      input.setAttribute('autocapitalize', 'characters');
+
+      input.addEventListener('input', () => {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+
+        input.value = input.value.toLocaleUpperCase('es-CO');
+
+        try {
+          input.setSelectionRange(start, end);
+        } catch (_) {}
+      });
+    });
+
+    document.querySelectorAll(
+      '#profile-register-form input[type="email"], ' +
+      '#profile-edit-form input[type="email"]'
+    ).forEach(input => {
+      input.setAttribute('autocapitalize', 'none');
+
+      input.addEventListener('input', () => {
+        const start = input.selectionStart;
+        const end = input.selectionEnd;
+
+        input.value = input.value.toLowerCase();
+
+        try {
+          input.setSelectionRange(start, end);
+        } catch (_) {}
+      });
+    });
+
+    document.querySelectorAll(
+      '#profile-signup-otp-code, ' +
+      '#profile-google-otp-code, ' +
+      '#profile-recovery-code, ' +
+      '#profile-email-otp-code'
+    ).forEach(input => {
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(0, 6);
+      });
+    });
+  }
+
+  /* ============================================================
+     INICIALIZACIÓN Y RETORNO DE GOOGLE
+     ============================================================ */
 
   document.addEventListener('DOMContentLoaded', async () => {
-    if (new URLSearchParams(location.search).get('embedded') === '1') document.body.classList.add('profile-embedded');
-    drawCaptcha();
-    document.querySelectorAll('#profile-register-form input:not([type=\"password\"]):not([type=\"email\"]), #profile-edit-form input:not([type=\"password\"]):not([type=\"email\"])').forEach(input => {
-      input.setAttribute('autocapitalize', 'characters');
-      input.addEventListener('input', () => {
-        const start = input.selectionStart, end = input.selectionEnd;
-        input.value = input.value.toLocaleUpperCase('es-CO');
-        try { input.setSelectionRange(start, end); } catch (_) {}
-      });
-    });
-    document.querySelectorAll('#profile-register-form input[type=\"email\"], #profile-edit-form input[type=\"email\"]').forEach(input => {
-      input.setAttribute('autocapitalize', 'none');
-      input.addEventListener('input', () => {
-        const start = input.selectionStart, end = input.selectionEnd;
-        input.value = input.value.toLowerCase();
-        try { input.setSelectionRange(start, end); } catch (_) {}
-      });
-    });
-    if (!clientDb) { showMessage('profile-login-error','No se pudo inicializar la conexión con Supabase.'); return; }
-    const saved = parseSession();
-    if (saved?.id) {
-      try { const { data, error } = await clientDb.from('clientes').select('*').eq('id', saved.id).maybeSingle(); if (error) throw error; if (data) await loadProfile(data); else showAuth(); }
-      catch (error) { console.error(error); showAuth(); }
-    } else { showAuth(); const requestedMode = new URLSearchParams(location.search).get('mode'); showAuthMode(requestedMode === 'register' ? 'register' : 'login'); }
+    if (
+      new URLSearchParams(location.search).get('embedded') === '1'
+    ) {
+      document.body.classList.add('profile-embedded');
+    }
+
+    configureInputs();
+
+    if (!clientDb || !AUTH()) {
+      console.error(
+        '[CUPISSA] No se inicializó Supabase o CUPISSAAuth.'
+      );
+
+      showMessage(
+        'profile-login-error',
+        'No pudimos conectar con el servicio. Inténtalo nuevamente más tarde.'
+      );
+
+      return;
+    }
+
+    try {
+      const googleProcessed = await processGoogleReturn();
+
+      if (googleProcessed) return;
+
+      const linked = await AUTH().getLinkedAccount();
+
+      if (linked?.client) {
+        await loadProfile(linked.client);
+        return;
+      }
+
+      if (linked?.user) {
+        showAuth();
+        showPanel('profile-legacy-link-panel');
+
+        const metadata = linked.user.user_metadata || {};
+        const parsed = splitName(
+          metadata.full_name || metadata.name || ''
+        );
+
+        $('legacy-link-nombres').value =
+          metadata.nombres ||
+          metadata.given_name ||
+          parsed.nombres;
+
+        $('legacy-link-apellidos').value =
+          metadata.apellidos ||
+          metadata.family_name ||
+          parsed.apellidos;
+
+        $('legacy-link-telefono').value =
+          metadata.telefono || '';
+
+        return;
+      }
+
+    } catch (error) {
+      console.error(
+        '[CUPISSA] No se pudo restaurar la sesión:',
+        error
+      );
+    }
+
+    localStorage.removeItem('cupissa_client_session');
+
+    showAuth();
+
+    const requestedMode =
+      new URLSearchParams(location.search).get('mode');
+
+    showAuthMode(
+      requestedMode === 'register'
+        ? 'register'
+        : 'login'
+    );
   });
+
 })();
