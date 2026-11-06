@@ -113,7 +113,9 @@ async function openPaymentGateway() {
             reference: payment.reference,
             transactionId: String(transaction.id),
             clientId: String(currentClient.id),
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            amount: Number(payment.amount || 0),
+            amountInCents: Number(payment.amountInCents || 0)
         };
         savePendingCreditPayment(pending);
 
@@ -122,8 +124,13 @@ async function openPaymentGateway() {
             if (text) text.innerText = 'Verificando tu pago...';
         }
 
-        const result = await confirmCreditPayment(pending);
-        await handleCreditPaymentResult(result);
+        // La página de resultado consulta al servidor y muestra éxito, rechazo o pendiente.
+        // La referencia e ID permiten recuperar el mismo pago sin crear otro cobro.
+        const resultUrl = new URL('/portal-pagos/resultado.html', window.location.origin);
+        resultUrl.searchParams.set('reference', pending.reference);
+        resultUrl.searchParams.set('id', pending.transactionId);
+        window.location.assign(resultUrl.toString());
+        return;
     } catch (error) {
         console.error('No fue posible completar el pago Wompi:', error);
         if (error?.code === 'WIDGET_CLOSED') {
