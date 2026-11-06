@@ -40,6 +40,22 @@
   let productLines = [];
   let cartTotal = 0;
   let advanceTotal = 0;
+  let deliveryRates = {};
+  let deliveryFee = 0;
+  let deliveryIsNational = false;
+  let deliveryQuoteStatus = 'UNSELECTED';
+  let deliveryQuoteMessage = 'Selecciona tu ciudad y barrio para calcular el domicilio.';
+  const DELIVERY_CITY_FALLBACK_MAX = {
+    BARRANQUILLA: 20000,
+    SOLEDAD: 15000,
+    MALAMBO: 15000,
+    GALAPA: 15000,
+    'LA PLAYA': 18000,
+    'PUERTO COLOMBIA': 30000
+  };
+  const DELIVERY_CITY_LABELS = [
+    'BARRANQUILLA', 'SOLEDAD', 'MALAMBO', 'GALAPA', 'LA PLAYA', 'PUERTO COLOMBIA', 'OTRO'
+  ];
   let preparedDays = 0;
   let earliestDelivery = '';
   let saleDatePicker = null;
@@ -406,7 +422,7 @@
       }
 
       if ($('checkout-mini-total')) {
-        $('checkout-mini-total').textContent = money(0);
+        $('checkout-mini-total').textContent = orderTotalLabel();
       }
 
       return;
@@ -458,7 +474,7 @@
     }
 
     if ($('checkout-mini-total')) {
-      $('checkout-mini-total').textContent = money(cartTotal);
+      $('checkout-mini-total').textContent = orderTotalLabel();
     }
   }
 
@@ -635,7 +651,8 @@
     const { data, error } = await supabaseClient
       .from('productos')
       .select('*')
-      .in('id', ids);
+      .in('id', ids)
+      .eq('oculto', false);
 
     if (error) throw error;
 
@@ -715,7 +732,7 @@
             ),
         diasAlquiler: rental ? rentalDays : 0,
         fotos: photos,
-        foto: photos[0] || item.foto || ''
+        foto: item.foto || photos[0] || ''
       };
     });
 
@@ -945,6 +962,218 @@
   }
 
   /* =====================================================
+     DOMICILIOS Y ENVÍOS
+  ===================================================== */
+
+  function normalizeLocationText(value) {
+    return String(value || '')
+      .trim()
+      .toLocaleUpperCase('es-CO')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ');
+  }
+
+  function canonicalDeliveryCity(value) {
+    const normalized = normalizeLocationText(value);
+    return DELIVERY_CITY_LABELS.find(city => normalizeLocationText(city) === normalized && city !== 'OTRO') || '';
+  }
+
+  function currentCityInputValue() {
+    return normalizeLocationText($('customer-city')?.value);
+  }
+
+  function currentNeighborhoodInputValue() {
+    return normalizeLocationText($('customer-neighborhood')?.value);
+  }
+
+  function getFinalCityValue() {
+    const selected = currentCityInputValue();
+    if (selected === 'OTRO') return String($('customer-city-other')?.value || '').trim().toLocaleUpperCase('es-CO');
+    return String($('customer-city')?.value || '').trim().toLocaleUpperCase('es-CO');
+  }
+
+  function getFinalNeighborhoodValue() {
+    const selected = currentNeighborhoodInputValue();
+    if (selected === 'OTRO') return String($('customer-neighborhood-other')?.value || '').trim().toLocaleUpperCase('es-CO');
+    return String($('customer-neighborhood')?.value || '').trim().toLocaleUpperCase('es-CO');
+  }
+
+  async function loadDeliveryRates() {
+    try {
+      const response = await fetch('/assets/data/domicilios.json', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = await response.json();
+      deliveryRates = payload?.ciudades && typeof payload.ciudades === 'object' ? payload.ciudades : {};
+    } catch (error) {
+      console.error('[CUPISSA] No fue posible cargar el tarifario de domicilios:', error);
+      deliveryRates = {};
+    }
+  }
+
+  function getNeighborhoodOptions(cityKey) {
+    const records = Array.isArray(deliveryRates[cityKey]) ? deliveryRates[cityKey] : [];
+    const values = [...new Set(records.map(item => String(item.barrio || '').trim()).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, 'es'));
+    return [...values, 'OTRO'];
+  }
+
+  function renderDeliverySuggestions(type) {
+    const isCity = type === 'city';
+    const input = $(isCity ? 'customer-city' : 'customer-neighborhood');
+    const panel = $(isCity ? 'customer-city-suggestions' : 'customer-neighborhood-suggestions');
+    if (!input || !panel) return;
+
+    const cityKey = canonicalDeliveryCity(currentCityInputValue());
+    const options = isCity ? DELIVERY_CITY_LABELS : getNeighborhoodOptions(cityKey);
+    const query = normalizeLocationText(input.value);
+    const filtered = options.filter(value => !query || normalizeLocationText(value).includes(query));
+    const visible = filtered.slice(0, 45);
+
+    if (!visible.length) {
+      panel.innerHTML = '<p class="px-3 py-2 text-[11px] text-slate-400">Sin coincidencias. Puedes escribir el dato completo.</p>';
+    } else {
+      panel.innerHTML = visible.map(value => `
+        <button type="button" role="option" aria-selected="false" data-delivery-option="${escapeHtml(value)}" class="w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-pink-50 hover:text-pink-700 focus:bg-pink-50 focus:text-pink-700 focus:outline-none">
+          ${escapeHtml(value)}
+        </button>
+      `).join('');
+      panel.querySelectorAll('[data-delivery-option]').forEach(option => {
+        option.addEventListener('mousedown', event => event.preventDefault());
+        option.addEventListener('click', () => {
+          input.value = option.dataset.deliveryOption || '';
+          closeDeliverySuggestions(type);
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      });
+    }
+
+    panel.classList.remove('hidden');
+    input.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeDeliverySuggestions(type) {
+    const isCity = type === 'city';
+    const panel = $(isCity ? 'customer-city-suggestions' : 'customer-neighborhood-suggestions');
+    const input = $(isCity ? 'customer-city' : 'customer-neighborhood');
+    panel?.classList.add('hidden');
+    input?.setAttribute('aria-expanded', 'false');
+  }
+
+  function updateDeliveryFieldVisibility() {
+    const cityValue = currentCityInputValue();
+    const isOtherCity = cityValue === 'OTRO';
+    $('customer-city-other-wrap')?.classList.toggle('hidden', !isOtherCity);
+    const cityOther = $('customer-city-other');
+    if (cityOther) {
+      cityOther.required = isOtherCity;
+      if (!isOtherCity) cityOther.value = '';
+    }
+
+    const neighborhoodValue = currentNeighborhoodInputValue();
+    const isOtherNeighborhood = neighborhoodValue === 'OTRO';
+    $('customer-neighborhood-other-wrap')?.classList.toggle('hidden', !isOtherNeighborhood);
+    const neighborhoodOther = $('customer-neighborhood-other');
+    if (neighborhoodOther) {
+      neighborhoodOther.required = isOtherNeighborhood;
+      if (!isOtherNeighborhood) neighborhoodOther.value = '';
+    }
+  }
+
+  function calculateDeliveryQuote() {
+    const rawCity = currentCityInputValue();
+    const city = rawCity === 'OTRO'
+      ? normalizeLocationText($('customer-city-other')?.value)
+      : rawCity;
+    const neighborhoodRaw = currentNeighborhoodInputValue();
+    const neighborhood = neighborhoodRaw === 'OTRO'
+      ? normalizeLocationText($('customer-neighborhood-other')?.value)
+      : neighborhoodRaw;
+    const cityKey = canonicalDeliveryCity(city);
+
+    if (!city) {
+      return {
+        fee: 0, national: false, status: 'UNSELECTED',
+        message: 'Selecciona tu ciudad y barrio para calcular el domicilio.'
+      };
+    }
+
+    if (!cityKey) {
+      return {
+        fee: 0, national: true, status: 'NATIONAL_TO_QUOTE',
+        message: 'Envío nacional: el valor del envío será incluido en el total a cancelar al momento de recibir.'
+      };
+    }
+
+    if (!neighborhood) {
+      return {
+        fee: 0, national: false, status: 'NEIGHBORHOOD_REQUIRED',
+        message: `Selecciona o escribe el barrio de ${cityKey} para calcular el domicilio.`
+      };
+    }
+
+    const records = Array.isArray(deliveryRates[cityKey]) ? deliveryRates[cityKey] : [];
+    const matched = neighborhoodRaw !== 'OTRO'
+      ? records.find(item => normalizeLocationText(item.barrio) === neighborhood)
+      : null;
+
+    if (matched && Number.isFinite(Number(matched.tarifa))) {
+      const fee = Math.max(0, Number(matched.tarifa));
+      return {
+        fee, national: false, status: 'LOCAL_REGISTERED',
+        message: `Domicilio para ${cityKey} - ${String(matched.barrio).toLocaleUpperCase('es-CO')}: ${money(fee)}. Se suma automáticamente al total de tu pedido.`
+      };
+    }
+
+    const fallback = Number(DELIVERY_CITY_FALLBACK_MAX[cityKey] || 0);
+    return {
+      fee: fallback, national: false, status: 'LOCAL_OTHER_NEIGHBORHOOD',
+      message: `Domicilio local: barrio no registrado en el tarifario. Se aplica la tarifa máxima registrada para ${cityKey} (${money(fallback)}) y se suma al total del pedido.`
+    };
+  }
+
+  function orderTotal() {
+    return Math.max(0, Number(cartTotal || 0) + (deliveryIsNational ? 0 : Number(deliveryFee || 0)));
+  }
+
+  function orderTotalLabel() {
+    const amount = money(orderTotal());
+    return deliveryIsNational ? `${amount} + envío por cotizar` : amount;
+  }
+
+  function updateDeliveryQuote() {
+    const quote = calculateDeliveryQuote();
+    deliveryFee = quote.fee;
+    deliveryIsNational = quote.national;
+    deliveryQuoteStatus = quote.status;
+    deliveryQuoteMessage = quote.message;
+
+    const note = $('delivery-fee-note');
+    if (note) {
+      const icon = quote.national ? 'fa-earth-americas' : 'fa-truck-fast';
+      note.innerHTML = `<i class="fa-solid ${icon}"></i><span>${escapeHtml(quote.message)}</span>`;
+    }
+
+    const totalText = orderTotalLabel();
+    if ($('checkout-mini-total')) $('checkout-mini-total').textContent = totalText;
+    if ($('checkout-shipping')) {
+      $('checkout-shipping').textContent = quote.national
+        ? 'Por cotizar al recibir'
+        : (quote.status === 'UNSELECTED' || quote.status === 'NEIGHBORHOOD_REQUIRED' ? 'Selecciona barrio' : money(deliveryFee));
+    }
+    if ($('checkout-grand-total')) $('checkout-grand-total').textContent = totalText;
+    if ($('checkout-subtotal')) $('checkout-subtotal').textContent = money(cartTotal);
+    if ($('pay-total-value')) $('pay-total-value').textContent = money(orderTotal());
+
+    const disclaimer = $('checkout-shipping-disclaimer');
+    if (disclaimer) {
+      disclaimer.textContent = quote.national
+        ? 'El envío nacional se cotiza por separado y su valor se cobrará al recibir el pedido. El pago en línea corresponde a los productos.'
+        : 'El domicilio local calculado con el tarifario se suma automáticamente al total del pedido.';
+    }
+  }
+
+  /* =====================================================
      PERFIL DEL CLIENTE
   ===================================================== */
 
@@ -1077,13 +1306,15 @@
         .value.trim()
         .toLocaleUpperCase('es-CO'),
 
-      ciudad: $('customer-city')
-        .value.trim()
-        .toLocaleUpperCase('es-CO'),
+      ciudad: getFinalCityValue(),
 
-      barrio: $('customer-neighborhood')
-        .value.trim()
-        .toLocaleUpperCase('es-CO'),
+      barrio: getFinalNeighborhoodValue(),
+
+      domicilio_valor: deliveryIsNational ? null : Number(deliveryFee || 0),
+      domicilio_estado: deliveryQuoteStatus,
+      domicilio_nota: deliveryQuoteMessage,
+      envio_nacional: deliveryIsNational,
+      total_pedido: orderTotal(),
 
       fecha_venta: saleDate,
       fecha_alquiler: rentalDate,
@@ -1145,6 +1376,8 @@
       if (!field.reportValidity()) return false;
     }
 
+    updateDeliveryFieldVisibility();
+    updateDeliveryQuote();
     const data = getFormData();
 
     const requiredFields = {
@@ -1266,6 +1499,10 @@
           <span>Entrega</span>
           <strong>${escapeHtml(data.direccion)}, ${escapeHtml(data.barrio)}, ${escapeHtml(data.ciudad)}</strong>
         </div>
+        <div>
+          <span>Domicilio / envío</span>
+          <strong>${deliveryIsNational ? 'Envío nacional por cotizar y cobrar al recibir' : money(deliveryFee)}</strong>
+        </div>
 
         ${dateSummary.join('')}
       `;
@@ -1342,7 +1579,7 @@
     }
 
     if ($('checkout-grand-total')) {
-      $('checkout-grand-total').textContent = money(cartTotal);
+      $('checkout-grand-total').textContent = orderTotalLabel();
     }
 
     if ($('checkout-advance')) {
@@ -1350,7 +1587,7 @@
     }
 
     if ($('pay-total-value')) {
-      $('pay-total-value').textContent = money(cartTotal);
+      $('pay-total-value').textContent = money(orderTotal());
     }
 
     if ($('pay-advance-value')) {
@@ -1450,7 +1687,7 @@
 
       const amount =
         mode === 'full'
-          ? cartTotal
+          ? orderTotal()
           : advanceTotal;
 
       goButton.textContent =
@@ -1657,7 +1894,7 @@
 
     const expectedAmount =
       mode === 'full'
-        ? cartTotal
+        ? orderTotal()
         : advanceTotal;
 
     if (expectedAmount <= 0) {
@@ -1719,7 +1956,8 @@
 
         // Informativos. El backend debe recalcular
         // los valores reales consultando Supabase.
-        clientTotal: Number(cartTotal),
+        clientTotal: Number(orderTotal()),
+        clientShipping: deliveryIsNational ? null : Number(deliveryFee || 0),
         clientAdvance: Number(advanceTotal)
       });
 
@@ -1734,11 +1972,18 @@
         );
       }
 
+      const signedAmount = Math.round(Number(prepared.amountInCents) / 100);
+      if (signedAmount !== Math.round(expectedAmount)) {
+        throw new Error(
+          deliveryFee > 0 && mode === 'full'
+            ? 'El servidor de pagos todavía no incluyó el domicilio en el valor firmado por Wompi. No se abrió el cobro para evitar cobrar un valor incorrecto; falta actualizar la función segura swift-endpoint para sumar clientShipping al total.'
+            : 'El valor firmado por Wompi no coincide con el importe seleccionado. No se abrió el cobro para evitar una diferencia en el pago.'
+        );
+      }
+
       const payment = {
         reference: String(prepared.reference),
-        amount: Number(
-          prepared.summary?.amountToPay ?? expectedAmount
-        ),
+        amount: signedAmount,
         amountInCents: Number(prepared.amountInCents),
         currency: String(prepared.currency || 'COP'),
         publicKey: String(prepared.publicKey),
@@ -2232,6 +2477,7 @@
       }
 
       await loadCartAndProducts();
+      await loadDeliveryRates();
 
       renderMiniCart();
 
@@ -2309,7 +2555,70 @@
         () => startWebPayment(selectedPaymentMode)
       );
 
+      $('customer-city')?.addEventListener('focus', () => renderDeliverySuggestions('city'));
+      $('customer-neighborhood')?.addEventListener('focus', () => renderDeliverySuggestions('neighborhood'));
+
+      $('customer-city')?.addEventListener('change', () => {
+        const previousCity = $('customer-city').dataset.previousValue || '';
+        const currentCity = currentCityInputValue();
+        if (previousCity !== currentCity) {
+          $('customer-neighborhood').value = '';
+          $('customer-neighborhood-other').value = '';
+        }
+        $('customer-city').dataset.previousValue = currentCity;
+        updateDeliveryFieldVisibility();
+        updateDeliveryQuote();
+        renderMiniCart();
+      });
+
+      $('customer-city')?.addEventListener('input', () => {
+        updateDeliveryFieldVisibility();
+        updateDeliveryQuote();
+        renderMiniCart();
+        renderDeliverySuggestions('city');
+      });
+
+      $('customer-neighborhood')?.addEventListener('change', () => {
+        updateDeliveryFieldVisibility();
+        updateDeliveryQuote();
+        renderMiniCart();
+        closeDeliverySuggestions('neighborhood');
+      });
+
+      $('customer-neighborhood')?.addEventListener('input', () => {
+        updateDeliveryFieldVisibility();
+        updateDeliveryQuote();
+        renderMiniCart();
+        renderDeliverySuggestions('neighborhood');
+      });
+
+      document.addEventListener('click', event => {
+        if (!event.target.closest('#customer-city') && !event.target.closest('#customer-city-suggestions')) {
+          closeDeliverySuggestions('city');
+        }
+        if (!event.target.closest('#customer-neighborhood') && !event.target.closest('#customer-neighborhood-suggestions')) {
+          closeDeliverySuggestions('neighborhood');
+        }
+      });
+
+      ['customer-city-other', 'customer-neighborhood-other'].forEach(id => {
+        $(id)?.addEventListener('input', () => {
+          const input = $(id);
+          const start = input.selectionStart;
+          const end = input.selectionEnd;
+          input.value = input.value.toLocaleUpperCase('es-CO');
+          try { input.setSelectionRange(start, end); } catch (_) {}
+          updateDeliveryQuote();
+          renderMiniCart();
+        });
+      });
+
       fillCustomerForm(clientProfile);
+      $('customer-city').dataset.previousValue = currentCityInputValue();
+      updateDeliveryFieldVisibility();
+      updateDeliveryQuote();
+      closeDeliverySuggestions('city');
+      closeDeliverySuggestions('neighborhood');
 
       /*
         Recuperamos el pago anterior si existe un identificador
