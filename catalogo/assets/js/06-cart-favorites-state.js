@@ -16,6 +16,8 @@ function addModalProductToCart() {
             const customText = inputCustom ? inputCustom.value.trim() : '';
             const accesorio = selectAccesorio && selectAccesorio.value ? selectAccesorio.value : null;
             const accesorioFoto = selectAccesorio && selectAccesorio.selectedOptions[0] ? (selectAccesorio.selectedOptions[0].dataset.photo || '') : '';
+            const colorFoto = selectColor && selectColor.selectedOptions[0] ? (selectColor.selectedOptions[0].dataset.photo || '') : '';
+            const modalMainPhoto = document.getElementById('opt-modal-img')?.src || '';
 
             let unitPrice = selectedModalidad === 'alquiler' ? (selectedProductModal.precio_alquiler || 0) : selectedProductModal.precio_detal;
             if (selectedModalidad === 'venta' && selectedProductModal.cant_min_mayorista && selectedQtyModal >= selectedProductModal.cant_min_mayorista && selectedProductModal.precio_mayorista) {
@@ -31,7 +33,8 @@ function addModalProductToCart() {
                 productId: selectedProductModal.id,
                 nombre: selectedProductModal.nombre,
                 modalidad: selectedModalidad.toUpperCase(),
-                foto: selectedProductModal.fotos && selectedProductModal.fotos[0] ? selectedProductModal.fotos[0] : '',
+                foto: colorFoto || modalMainPhoto || (selectedProductModal.fotos && selectedProductModal.fotos[0] ? selectedProductModal.fotos[0] : ''),
+                fotoColor: colorFoto,
                 talla,
                 color,
                 accesorio,
