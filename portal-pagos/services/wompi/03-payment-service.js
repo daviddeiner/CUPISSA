@@ -1,6 +1,6 @@
 /**
  * CUPISSA | Portal de pagos / servicio de pago con Wompi
- * Usa la MISMA Edge Function del checkout (swift-endpoint), pero con las
+ * Usa la Edge Function propia de créditos (credit-payments), con las
  * acciones propias del crédito: create_credit_payment y confirm_credit_payment.
  * El navegador no modifica créditos: el servidor verifica con Wompi y aplica.
  *
@@ -9,7 +9,7 @@
 (function (global) {
   'use strict';
 
-  const EDGE_FUNCTION = 'swift-endpoint';
+  const EDGE_FUNCTION = 'credit-payments';
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
   /** Llama a la función y devuelve el motivo real del error (no el genérico de supabase-js). */
