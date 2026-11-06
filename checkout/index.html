@@ -65,12 +65,29 @@
               <div><label class="checkout-label" for="customer-email">Correo electrónico *</label><input id="customer-email" class="checkout-input" type="email" autocapitalize="none" autocomplete="email" required maxlength="180"></div>
               <div><label class="checkout-label" for="customer-phone">Teléfono *</label><input id="customer-phone" class="checkout-input" type="tel" inputmode="tel" autocomplete="tel" required minlength="7" maxlength="20"></div>
               <div class="sm:col-span-2"><label class="checkout-label" for="customer-address">Dirección exacta *</label><input id="customer-address" class="checkout-input" autocomplete="street-address" placeholder="Calle, carrera, número, apartamento, indicaciones" required maxlength="220" autocapitalize="characters"></div>
-              <div><label class="checkout-label" for="customer-city">Ciudad *</label><input id="customer-city" class="checkout-input" autocomplete="address-level2" required maxlength="100" autocapitalize="characters"></div>
-              <div><label class="checkout-label" for="customer-neighborhood">Barrio *</label><input id="customer-neighborhood" class="checkout-input" required maxlength="100" autocapitalize="characters"></div>
+              <div class="relative">
+                <label class="checkout-label" for="customer-city">Ciudad / municipio *</label>
+                <input id="customer-city" class="checkout-input" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="customer-city-suggestions" required maxlength="100" placeholder="Escribe o selecciona una ciudad" autocapitalize="characters">
+                <div id="customer-city-suggestions" class="checkout-autocomplete-menu hidden" role="listbox" aria-label="Opciones de ciudad"></div>
+              </div>
+              <div id="customer-city-other-wrap" class="hidden">
+                <label class="checkout-label" for="customer-city-other">Especifica la ciudad / municipio *</label>
+                <input id="customer-city-other" class="checkout-input" maxlength="100" placeholder="Escribe la ciudad o municipio" autocapitalize="characters">
+              </div>
+              <div class="relative">
+                <label class="checkout-label" for="customer-neighborhood">Barrio / sector *</label>
+                <input id="customer-neighborhood" class="checkout-input" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="customer-neighborhood-suggestions" required maxlength="100" placeholder="Escribe o selecciona tu barrio" autocapitalize="characters">
+                <div id="customer-neighborhood-suggestions" class="checkout-autocomplete-menu hidden" role="listbox" aria-label="Opciones de barrio"></div>
+              </div>
+              <div id="customer-neighborhood-other-wrap" class="hidden">
+                <label class="checkout-label" for="customer-neighborhood-other">Especifica el barrio / sector *</label>
+                <input id="customer-neighborhood-other" class="checkout-input" maxlength="100" placeholder="Escribe el barrio o sector" autocapitalize="characters">
+              </div>
               <div id="sale-date-field" class="sm:col-span-2"><label class="checkout-label" for="delivery-date">Fecha de entrega de la compra *</label><input id="delivery-date" class="checkout-input" type="text" placeholder="Selecciona una fecha disponible" readonly></div>
               <div id="rental-date-field" class="sm:col-span-2 hidden"><label class="checkout-label" for="rental-date">Fecha del alquiler *</label><input id="rental-date" class="checkout-input" type="text" placeholder="Selecciona la fecha del evento" readonly></div>
               <div id="rental-days-field" class="sm:col-span-2 hidden"><label class="checkout-label" for="rental-days">Cantidad de días para el alquiler *</label><select id="rental-days" class="checkout-input"><option value="1">1 día — valor inicial</option><option value="2">2 días — +50%</option><option value="3">3 días — +100%</option><option value="4">4 días — +150%</option><option value="5">5 días — +200%</option></select><p class="text-[11px] text-slate-500 mt-1">Cada día adicional incrementa el valor inicial del alquiler en un 50%. Máximo 5 días.</p></div>
             </div>
+            <div id="delivery-fee-note" class="checkout-info" aria-live="polite"><i class="fa-solid fa-truck-fast"></i><span>Selecciona tu ciudad y barrio para calcular el domicilio.</span></div>
             <div id="delivery-date-note" class="checkout-info"><i class="fa-regular fa-calendar-check"></i><span>Calculando el tiempo mínimo de producción…</span></div>
             <div id="rental-date-note" class="checkout-info hidden"><i class="fa-regular fa-calendar-check"></i><span>EL ALQUILER ES POR 24 HORAS, SOLICITA TU PEDIDO PARA UN DIA ANTES DE LA FECHA DEL EVENTO.</span></div>
             <div class="flex flex-col sm:flex-row gap-2 pt-1">
@@ -94,10 +111,10 @@
             <div class="checkout-total-row"><span>Domicilio / envío</span><strong id="checkout-shipping">Por confirmar</strong></div>
             <div class="checkout-total-row total"><span>Total del pedido</span><strong id="checkout-grand-total">$ 0</strong></div>
             <div class="checkout-total-row advance"><span>Anticipo disponible</span><strong id="checkout-advance">$ 0</strong></div>
-            <p class="text-[10px] text-slate-400 leading-relaxed">El valor del domicilio o envío se confirmará con CUPISSA y no se incluye en este cobro inicial.</p>
+            <p id="checkout-shipping-disclaimer" class="text-[10px] text-slate-400 leading-relaxed">El domicilio local se calcula con el tarifario y se suma al total del pedido. Los envíos nacionales se cotizan y se cobran al recibir.</p>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-            <button type="button" id="pay-total-button" class="checkout-pay-option" aria-pressed="false"><span class="checkout-pay-icon"><i class="fa-solid fa-credit-card"></i></span><span class="text-left flex-1"><strong>Pagar total pedido</strong><small id="pay-total-value">$ 0</small></span></button>
+            <button type="button" id="pay-total-button" class="checkout-pay-option" aria-pressed="false"><span class="checkout-pay-icon"><i class="fa-solid fa-credit-card"></i></span><span class="text-left flex-1"><strong>Pagar total pedido</strong><small id="pay-total-value">$ 0</small><small class="checkout-pay-hint">Recomendado para envíos nacionales</small></span></button>
             <button type="button" id="pay-advance-button" class="checkout-pay-option secondary" aria-pressed="false"><span class="checkout-pay-icon"><i class="fa-solid fa-wallet"></i></span><span class="text-left flex-1"><strong>Pagar anticipo</strong><small id="pay-advance-value">$ 0</small></span></button>
           </div>
           <p id="split-orders-note" class="hidden text-xs text-pink-700 bg-pink-50 border border-pink-100 rounded-xl p-3">Tu compra y tu alquiler se registrarán como dos pedidos independientes. Completa el pago para confirmar ambos.</p>
@@ -131,6 +148,6 @@
   <script src="/shared/js/supabase-config.js"></script>
   <script src="/catalogo/assets/js/00-config-state.js"></script>
   <script src="/portal-pagos/services/wompi/04-checkout.js?v=20261104-swift-endpoint-test-failed-1"></script>
-  <script src="/assets/js/checkout.js?v=20261104-swift-endpoint-test-failed-1"></script>
+  <script src="/assets/js/checkout.js?v=20261106-domicilios-colores-1"></script>
 </body>
 </html>
