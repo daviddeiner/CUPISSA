@@ -449,7 +449,7 @@
       }
     }
 
-    redirectToCheckoutIfRequested();
+    if (!notifyCatalogGoogleFinished()) redirectToCheckoutIfRequested();
   }
 
   function redirectToCheckoutIfRequested() {
@@ -527,11 +527,50 @@
      GOOGLE: INICIAR SESIÓN
      ============================================================ */
 
+  // Google rechaza OAuth dentro de iframes. En móvil salimos solo
+  // durante la autenticación y regresamos automáticamente al catálogo.
+  function startGoogleFromProfile(intent) {
+    // Detectar el iframe REAL, incluso si una redirección eliminó ?embedded=1.
+    if (window.self !== window.top) {
+      const params = new URLSearchParams(location.search);
+      const url = new URL('/perfil/', location.origin);
+      url.searchParams.set('cupissa_google_popup', intent);
+      url.searchParams.set('cupissa_mobile_return', '1');
+      if (params.get('next') === 'checkout') url.searchParams.set('next', 'checkout');
+      // La navegación la realiza el catálogo, no el iframe de perfil.
+      try {
+        window.parent.postMessage({ type: 'CUPISSA_GOOGLE_TOP_LEVEL', url: url.toString() }, location.origin);
+      } catch (_) {
+        window.top.location.assign(url.toString());
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function notifyCatalogGoogleFinished() {
+    const params = new URLSearchParams(location.search);
+    if (params.get('cupissa_google_return') !== '1') return false;
+    if (params.get('cupissa_mobile_return') === '1') {
+      if (params.get('next') === 'checkout') location.replace('/checkout/');
+      else location.replace('/catalogo/');
+      return true;
+    }
+    if (!window.opener || window.opener.closed) return false;
+    window.opener.postMessage({
+      type: 'CUPISSA_GOOGLE_FINISHED',
+      next: params.get('next') === 'checkout' ? 'checkout' : ''
+    }, location.origin);
+    window.close();
+    return true;
+  }
+
   window.loginWithGoogle = async function () {
+    if (startGoogleFromProfile('login')) return;
     hideMessage('profile-login-error');
 
     try {
-      await AUTH().signInGoogle('login', window.location.href);
+      await AUTH().signInGoogle('login', new URL('/perfil/?cupissa_google_return=1' + (new URLSearchParams(location.search).get('cupissa_mobile_return') === '1' ? '&cupissa_mobile_return=1' : '') + (new URLSearchParams(location.search).get('next') === 'checkout' ? '&next=checkout' : ''), location.origin).toString());
     } catch (error) {
       handleError(
         'profile-login-error',
@@ -546,10 +585,11 @@
      ============================================================ */
 
   window.registerWithGoogle = async function () {
+    if (startGoogleFromProfile('register')) return;
     hideMessage('profile-register-error');
 
     try {
-      await AUTH().signInGoogle('register', window.location.href);
+      await AUTH().signInGoogle('register', new URL('/perfil/?cupissa_google_return=1' + (new URLSearchParams(location.search).get('cupissa_mobile_return') === '1' ? '&cupissa_mobile_return=1' : '') + (new URLSearchParams(location.search).get('next') === 'checkout' ? '&next=checkout' : ''), location.origin).toString());
     } catch (error) {
       handleError(
         'profile-register-error',
@@ -1796,6 +1836,26 @@
     }
 
     configureInputs();
+
+    // Ventana abierta desde el perfil integrado: empezar OAuth desde una
+    // página principal, nunca desde el iframe (Google lo bloquea).
+    const googlePopupIntent = new URLSearchParams(location.search).get('cupissa_google_popup');
+    if (googlePopupIntent === 'login' || googlePopupIntent === 'register') {
+      if (window.self !== window.top) {
+        startGoogleFromProfile(googlePopupIntent);
+        return;
+      }
+      const redirect = new URL('/perfil/', location.origin);
+      redirect.searchParams.set('cupissa_google_return', '1');
+      if (new URLSearchParams(location.search).get('cupissa_mobile_return') === '1') redirect.searchParams.set('cupissa_mobile_return', '1');
+      if (new URLSearchParams(location.search).get('next') === 'checkout') redirect.searchParams.set('next', 'checkout');
+      try {
+        await AUTH().signInGoogle(googlePopupIntent, redirect.toString());
+      } catch (error) {
+        showMessage('profile-login-error', friendlyError(error));
+      }
+      return;
+    }
 
     if (!clientDb || !AUTH()) {
       console.error(
