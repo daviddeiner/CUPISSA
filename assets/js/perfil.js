@@ -30,7 +30,7 @@
     })[c]);
 
   const DUPLICATE_PHONE =
-    'EL TELEFONO YA ESTA REGISTRADO, RECUPERA TU CONTRASEÑA O USA UNO NUEVO';
+    'Este teléfono ya está registrado. Inicia sesión o utiliza otro número.';
 
   let currentClient = null;
   let currentProfile = null;
@@ -93,7 +93,7 @@
       original.includes('invalid login credentials') ||
       original.includes('invalid credentials')
     ) {
-      return 'El correo o la contraseña no son correctos.';
+      return 'No fue posible validar el acceso. Comprueba el correo.';
     }
 
     if (
@@ -485,7 +485,7 @@
     const button = $('profile-login-form')?.querySelector('button[type="submit"]');
     disableButton(button, true, 'Enviando código...');
     try {
-      await AUTH().sendEmailLoginOtp(email, window.location.href);
+      await AUTH().sendEmailLoginOtp(email, new URL('/perfil/', location.origin).href);
       pendingEmailLogin = email;
       $('profile-email-login-destination').textContent = email;
       $('profile-email-login-code').value = '';
@@ -516,7 +516,7 @@
 
   window.resendProfileEmailLoginOtp = async function () {
     try {
-      await AUTH().sendEmailLoginOtp(pendingEmailLogin, window.location.href);
+      await AUTH().sendEmailLoginOtp(pendingEmailLogin, new URL('/perfil/', location.origin).href);
       showFlowMessage('profile-email-login-otp-error', 'Enviamos un nuevo código a tu correo.', true);
     } catch (error) {
       showFlowMessage('profile-email-login-otp-error', friendlyError(error));
@@ -829,6 +829,7 @@
 
     try {
       await AUTH().checkPhoneAvailable(telefono);
+      await AUTH().checkEmailAvailable(email);
 
       const result = await AUTH().signUp({
         email,
@@ -1286,13 +1287,61 @@
     }
   };
 
+  window.closeProfileEmailChange = function () {
+    $('profile-email-otp-panel')?.classList.add('hidden');
+    $('profile-email-otp-panel')?.classList.remove('flex');
+  };
+  let emailChangeOld = '';
+  let emailChangeNew = '';
+  window.startProfileEmailChange = async function () {
+    const oldEmail = cleanEmail(currentProfile?.correo);
+    if (!oldEmail) { showMessage('profile-edit-error', 'No encontramos el correo actual.'); return; }
+    try {
+      await AUTH().sendEmailLoginOtp(oldEmail, new URL('/perfil/', location.origin).href);
+      emailChangeOld = oldEmail;
+      $('profile-email-old-code').value = '';
+      $('profile-email-new-address').value = '';
+      $('profile-email-otp-code').value = '';
+      $('profile-email-old-stage').classList.remove('hidden');
+      $('profile-email-new-stage').classList.add('hidden');
+      $('profile-email-otp-panel').classList.remove('hidden');
+      $('profile-email-otp-panel').classList.add('flex');
+      $('profile-email-new-request').classList.remove('hidden');
+      $('profile-email-otp-form').style.display = 'none';
+      hideFlowMessage('profile-email-otp-error');
+      showFlowMessage('profile-email-otp-success', 'Enviamos un código a tu correo actual.', true);
+    } catch (error) { showMessage('profile-edit-error', friendlyError(error)); }
+  };
+  window.verifyProfileOldEmail = async function (event) {
+    event.preventDefault();
+    try {
+      const code = $('profile-email-old-code').value.replace(/\D/g, '').slice(0,6);
+      await AUTH().verifyEmailLoginOtp(emailChangeOld, code);
+      $('profile-email-old-stage').classList.add('hidden');
+      $('profile-email-new-stage').classList.remove('hidden');
+      showFlowMessage('profile-email-otp-success', 'Correo actual verificado. Escribe el nuevo correo.', true);
+    } catch(error) { showFlowMessage('profile-email-otp-error', friendlyError(error)); }
+  };
+  window.requestProfileNewEmail = async function (event) {
+    event.preventDefault();
+    try {
+      const address = cleanEmail($('profile-email-new-address').value);
+      if (!validEmail(address) || address === emailChangeOld) throw new Error('Introduce otro correo válido.');
+      await AUTH().checkEmailAvailable(address);
+      await AUTH().sendEmailChangeOtp(address);
+      emailChangeNew = address;
+      $('profile-email-new-request').classList.add('hidden');
+      $('profile-email-otp-form').style.display = 'block';
+      showFlowMessage('profile-email-otp-success', 'Enviamos el código al nuevo correo.', true);
+    } catch(error) { showFlowMessage('profile-email-otp-error', friendlyError(error)); }
+  };
   window.verifyProfileEmailChange = async function (event) {
     event.preventDefault();
 
     hideFlowMessage('profile-email-otp-error');
     hideFlowMessage('profile-email-otp-success');
 
-    const email = cleanEmail($('edit-correo')?.value);
+    const email = emailChangeNew;
     const code = $('profile-email-otp-code')?.value.trim();
 
     if (!validOtp(code)) {
@@ -1308,10 +1357,12 @@
 
       currentProfile.correo = email;
       currentClient.correo = email;
-
+      $('edit-correo').value = email;
+      $('profile-email-new-request').classList.remove('hidden');
+      $('profile-email-otp-form').style.display = 'none';
       renderProfile();
 
-      $('profile-email-otp-panel')?.classList.add('hidden');
+      closeProfileEmailChange();
 
       showFlowMessage(
         'profile-email-otp-success',
