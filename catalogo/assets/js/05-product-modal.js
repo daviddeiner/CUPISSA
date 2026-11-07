@@ -162,26 +162,14 @@ function openOptionsModal(prodId) {
             if (selectAccesorio && accessoryList && wrapAccesorios) {
                 selectAccesorio.innerHTML = '';
                 accessoryList.innerHTML = '';
-                const noAccessory = document.createElement('option');
-                noAccessory.value = '';
-                noAccessory.textContent = 'Sin accesorio';
-                noAccessory.dataset.inc = '0';
-                selectAccesorio.appendChild(noAccessory);
+                // Sin opción artificial: cero accesorios seleccionados es el estado inicial.
+                selectedCupissaAccessories.clear();
+                const emptyOpt = document.createElement('option');
+                emptyOpt.value = '';
+                selectAccesorio.appendChild(emptyOpt);
 
                 const accessories = Array.isArray(prod.accesorios) ? prod.accesorios : [];
                 if (accessories.length) {
-                    const noAccessoryCard = document.createElement('button');
-                    noAccessoryCard.type = 'button';
-                    noAccessoryCard.className = 'accessory-choice is-selected';
-                    noAccessoryCard.setAttribute('aria-pressed', 'true');
-                    noAccessoryCard.innerHTML = '<span class="accessory-image-wrap accessory-image-empty"><i class="fa-solid fa-ban" aria-hidden="true"></i></span><span class="accessory-choice-details"><strong class="accessory-choice-name">Sin accesorio</strong><small class="accessory-choice-price">Precio sin incremento</small></span>';
-                    noAccessoryCard.addEventListener('click', () => {
-                        selectAccesorio.value = '';
-                        updateAccessoryChoiceState();
-                        recalculateProductPrice();
-                    });
-                    accessoryList.appendChild(noAccessoryCard);
-
                     accessories.forEach((accessory, index) => {
                         const name = String(accessory.nombre || accessory.name || '').trim();
                         if (!name) return;
@@ -241,7 +229,8 @@ function openOptionsModal(prodId) {
                         choice.append(imageWrap, details);
 
                         const selectChoice = () => {
-                            selectAccesorio.value = name;
+                            if (selectedCupissaAccessories.has(name)) selectedCupissaAccessories.delete(name);
+                            else selectedCupissaAccessories.add(name);
                             updateAccessoryChoiceState();
                             recalculateProductPrice();
                         };
@@ -273,22 +262,23 @@ function openOptionsModal(prodId) {
         }
 
 
+const selectedCupissaAccessories = new Set();
 function updateAccessoryChoiceState() {
-    const selectAccesorio = document.getElementById('opt-select-accesorio');
-    const accessoryList = document.getElementById('accessory-options-list');
-    if (!selectAccesorio || !accessoryList) return;
-    const selected = selectAccesorio.value || '';
-    accessoryList.querySelectorAll('.accessory-choice').forEach((button) => {
-        const isSelected = selected
-            ? button.dataset.accessoryValue === selected
-            : button.dataset.accessoryIndex === undefined;
-        button.classList.toggle('is-selected', isSelected);
-        button.classList.toggle('border-pink-500', isSelected);
-        button.classList.toggle('bg-pink-50', isSelected);
-        button.classList.toggle('border-slate-200', !isSelected);
-        button.classList.toggle('bg-white', !isSelected);
-        button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+    const select = document.getElementById('opt-select-accesorio');
+    const list = document.getElementById('accessory-options-list');
+    if (!select || !list) return;
+    list.querySelectorAll('.accessory-choice').forEach(card => {
+        const active = selectedCupissaAccessories.has(card.dataset.accessoryValue);
+        card.classList.toggle('is-selected', active);
+        card.setAttribute('aria-pressed', String(active));
     });
+    // Conserva compatibilidad con el selector original, usado por otras secciones.
+    select.value = selectedCupissaAccessories.size === 1 ? [...selectedCupissaAccessories][0] : '';
+}
+function cupissaSelectedAccessories() {
+    return Array.from(document.querySelectorAll('#opt-select-accesorio option'))
+        .filter(option => selectedCupissaAccessories.has(option.value))
+        .map(option => ({ nombre: option.value, incremento: Number(option.dataset.inc || 0), foto: option.dataset.photo || '' }));
 }
 
         function handleProductColorChange() {
@@ -396,7 +386,7 @@ function updateAccessoryChoiceState() {
             if (selectColor && selectColor.selectedOptions[0]) unitPrice += parseFloat(selectColor.selectedOptions[0].dataset.inc || 0);
 
             const selectAccesorio = document.getElementById('opt-select-accesorio');
-            if (selectAccesorio && selectAccesorio.selectedOptions[0]) unitPrice += parseFloat(selectAccesorio.selectedOptions[0].dataset.inc || 0);
+            unitPrice += cupissaSelectedAccessories().reduce((sum, accessory) => sum + accessory.incremento, 0);
 
             const totalProduct = unitPrice * selectedQtyModal;
             const pctAnticipo = p.porcentaje_anticipo || 20;
