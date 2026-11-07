@@ -165,54 +165,90 @@
 
   async function getLinkedAccount() {
     const user = await getCurrentUser();
-
     if (!user) return null;
 
-    if (user.email_confirmed_at) {
-      const sync = await db.rpc('cupissa_sync_my_email');
-
-      if (sync.error) {
-        console.warn(
-          '[CUPISSA AUTH] No se pudo sincronizar el correo:',
-          sync.error
-        );
+    // RPC SECURITY DEFINER vincula clientes_web con el cliente legado por correo.
+    // Si aún no está instalada, se intenta la resolución directa como respaldo.
+    try {
+      const resolved = await db.rpc('cupissa_resolve_my_account');
+      if (!resolved.error && resolved.data) {
+        const payload = resolved.data;
+        if (payload.client) {
+          const profileEmail = cleanEmail(payload.profile?.correo || user.email);
+          return {
+            user,
+            profile: payload.profile || null,
+            client: { ...payload.client, correo: cleanEmail(payload.client.correo || profileEmail) }
+          };
+        }
+        if (payload.profile || payload.client === null) {
+          return { user, profile: payload.profile || null, client: null };
+        }
       }
+    } catch (error) {
+      console.warn('[CUPISSA AUTH] RPC de vinculación no disponible; se intentará resolver por correo.', error);
     }
 
-    const { data: profile, error: profileError } = await db
-      .from('clientes_web')
-      .select('*')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
+    const email = cleanEmail(user.email);
+    let profile = null;
+    const byAuth = await db.from('clientes_web').select('*').eq('auth_user_id', user.id).limit(1).maybeSingle();
+    if (byAuth.error) throwFriendly(byAuth.error);
+    profile = byAuth.data;
 
-    if (profileError) throwFriendly(profileError);
-
-    if (!profile || !profile.cliente_id) {
-      return {
-        user,
-        profile: profile || null,
-        client: null
-      };
+    if (!profile && email) {
+      const byEmail = await db.from('clientes_web').select('*').ilike('correo', email).limit(1).maybeSingle();
+      if (byEmail.error) throwFriendly(byEmail.error);
+      profile = byEmail.data;
     }
 
-    const { data: client, error: clientError } = await db
-      .from('clientes')
-      .select('*')
-      .eq('id', profile.cliente_id)
-      .maybeSingle();
+    let client = null;
+    if (profile?.cliente_id) {
+      const result = await db.from('clientes').select('*').eq('id', profile.cliente_id).limit(1).maybeSingle();
+      if (result.error) throwFriendly(result.error);
+      client = result.data;
+    }
 
-    if (clientError) throwFriendly(clientError);
+    if (!client && email) {
+      const result = await db.from('clientes').select('*').ilike('correo', email).limit(1).maybeSingle();
+      if (result.error) throwFriendly(result.error);
+      client = result.data;
+    }
 
-    if (!client) {
-      throw new Error(
-        'No encontramos los datos de tu cuenta CUPISSA. Contacta a nuestro equipo de atención.'
-      );
+    if (!client && profile?.telefono) {
+      const result = await db.from('clientes').select('*').eq('telefono', cleanPhone(profile.telefono)).limit(1).maybeSingle();
+      if (result.error) throwFriendly(result.error);
+      client = result.data;
+    }
+
+    if (!client) return { user, profile: profile || null, client: null };
+
+    const nameParts = String(client.nombre || '').trim().split(/\s+/).filter(Boolean);
+    const patch = {
+      auth_user_id: user.id,
+      cliente_id: client.id,
+      correo: email || profile?.correo || client.correo || '',
+      telefono: profile?.telefono || client.telefono || ''
+    };
+
+    if (profile) {
+      const updated = await db.from('clientes_web').update(patch).eq('id', profile.id).select('*').maybeSingle();
+      if (!updated.error && updated.data) profile = updated.data;
+      else if (updated.error) console.warn('[CUPISSA AUTH] No se pudo actualizar el vínculo del perfil:', updated.error);
+    } else {
+      const inserted = await db.from('clientes_web').insert([{
+        ...patch,
+        nombres: nameParts.shift() || 'CLIENTE',
+        apellidos: nameParts.join(' '),
+        direccion: '', barrio: '', ciudad: ''
+      }]).select('*').maybeSingle();
+      if (!inserted.error) profile = inserted.data;
+      else console.warn('[CUPISSA AUTH] No se pudo crear el perfil web:', inserted.error);
     }
 
     return {
       user,
       profile,
-      client
+      client: { ...client, correo: cleanEmail(client.correo || profile?.correo || email) }
     };
   }
 
@@ -372,8 +408,29 @@
   }
 
   /* ============================================================
-     INICIAR SESIÓN
-     EXCLUSIVAMENTE CON CORREO Y CONTRASEÑA.
+     INICIAR SESIÓN CON CORREO (CÓDIGO OTP, SIN CONTRASEÑA)
+     ============================================================ */
+
+  async function sendEmailLoginOtp(email, redirectTo = REDIRECT_URL) {
+    const correo = validateEmail(email);
+    const { data, error } = await db.auth.signInWithOtp({
+      email: correo,
+      options: { shouldCreateUser: true, emailRedirectTo: redirectTo || REDIRECT_URL }
+    });
+    if (error) throwFriendly(error);
+    return data;
+  }
+
+  async function verifyEmailLoginOtp(email, code) {
+    const correo = validateEmail(email);
+    const token = validateOtp(code);
+    const { data, error } = await db.auth.verifyOtp({ email: correo, token, type: 'email' });
+    if (error) throwFriendly(error);
+    return data;
+  }
+
+  /* ============================================================
+     INICIAR SESIÓN LEGADO (se conserva para compatibilidad)
      ============================================================ */
 
   async function signIn(email, password) {
@@ -397,7 +454,7 @@
      GOOGLE: INICIAR AUTENTICACIÓN
      ============================================================ */
 
-  async function signInGoogle(intent = 'login') {
+  async function signInGoogle(intent = 'login', redirectTo = REDIRECT_URL) {
     const validIntent = intent === 'register' ? 'register' : 'login';
 
     sessionStorage.setItem(
@@ -408,7 +465,7 @@
     const { data, error } = await db.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: REDIRECT_URL,
+        redirectTo: redirectTo || REDIRECT_URL,
         queryParams: {
           access_type: 'offline',
           prompt: 'select_account'
@@ -692,6 +749,8 @@
     createNewClient,
 
     signIn,
+    sendEmailLoginOtp,
+    verifyEmailLoginOtp,
 
     signInGoogle,
     signUpGoogle,
