@@ -3,8 +3,79 @@
  * Mantiene los datos en las tablas actuales clientes y creditos.
  */
 
+let cupissaCreditRealtimeChannel = null;
+let cupissaCreditRealtimeReloadTimer = null;
+
+function subscribeClientCreditRealtime(clientId) {
+    if (!clientId || !supabaseClient.channel) return;
+    if (cupissaCreditRealtimeChannel) {
+        supabaseClient.removeChannel(cupissaCreditRealtimeChannel);
+        cupissaCreditRealtimeChannel = null;
+    }
+    cupissaCreditRealtimeChannel = supabaseClient
+        .channel(`cupissa-credit-client-${clientId}`)
+        .on('postgres_changes', {
+            event: '*', schema: 'public', table: 'creditos',
+            filter: `cliente_id=eq.${clientId}`
+        }, () => {
+            clearTimeout(cupissaCreditRealtimeReloadTimer);
+            cupissaCreditRealtimeReloadTimer = setTimeout(() => loadClientDashboard(), 350);
+        })
+        .on('postgres_changes', {
+            event: 'UPDATE', schema: 'public', table: 'clientes',
+            filter: `id=eq.${clientId}`
+        }, () => {
+            clearTimeout(cupissaCreditRealtimeReloadTimer);
+            cupissaCreditRealtimeReloadTimer = setTimeout(() => loadClientDashboard(), 350);
+        })
+        .on('postgres_changes', {
+            event: '*', schema: 'public', table: 'cuotas_credito',
+            filter: `cliente_id=eq.${clientId}`
+        }, () => {
+            clearTimeout(cupissaCreditRealtimeReloadTimer);
+            cupissaCreditRealtimeReloadTimer = setTimeout(() => loadClientInstallments(), 350);
+        })
+        .subscribe();
+}
+
+async function loadClientInstallments() {
+    const container = document.getElementById('client-installments-list');
+    if (!container || !currentClient?.id) return;
+    const { data, error } = await supabaseClient
+        .from('cuotas_credito')
+        .select('id,credito_id,numero_cuota,valor_cuota,monto_pagado,fecha_vencimiento,fecha_pago,estado')
+        .eq('cliente_id', currentClient.id)
+        .order('fecha_vencimiento', { ascending: true });
+    if (error) {
+        console.warn('[CUPISSA] No se pudieron cargar las cuotas:', error);
+        container.innerHTML = '<p class="py-6 text-center text-xs text-slate-400">No fue posible cargar el detalle de cuotas.</p>';
+        return;
+    }
+    if (!data?.length) {
+        container.innerHTML = '<p class="py-6 text-center text-xs text-slate-400">Todavía no hay cuotas programadas para tus créditos.</p>';
+        return;
+    }
+    const rows = data.map(item => {
+        const paid = String(item.estado || '').toUpperCase() === 'PAGADO';
+        const statusClass = paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700';
+        const status = paid ? 'PAGADA' : 'PENDIENTE';
+        const due = item.fecha_vencimiento ? formatDate(item.fecha_vencimiento) : '—';
+        const paidDate = item.fecha_pago ? formatDate(item.fecha_pago) : '—';
+        const amount = formatCOP(item.valor_cuota || 0);
+        return `<tr class="border-b border-slate-100 last:border-0">
+          <td class="px-3 py-3 text-xs font-bold text-slate-700">${Number(item.numero_cuota || 0) || '—'}</td>
+          <td class="px-3 py-3 text-xs text-slate-600">${due}</td>
+          <td class="px-3 py-3 text-xs font-bold text-slate-800">${amount}</td>
+          <td class="px-3 py-3 text-xs text-slate-600">${paidDate}</td>
+          <td class="px-3 py-3"><span class="inline-flex rounded-full px-2.5 py-1 text-[9px] font-black ${statusClass}">${status}</span></td>
+        </tr>`;
+    }).join('');
+    container.innerHTML = `<table class="min-w-full text-left"><thead><tr class="bg-slate-50 text-[9px] uppercase tracking-wider text-slate-400"><th class="px-3 py-2">Cuota</th><th class="px-3 py-2">Vencimiento</th><th class="px-3 py-2">Valor</th><th class="px-3 py-2">Fecha de pago</th><th class="px-3 py-2">Estado</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 async function loadClientDashboard() {
     if (!currentClient) return;
+    subscribeClientCreditRealtime(currentClient.id);
 
     const { data: updatedClient, error: clientError } = await supabaseClient
         .from('clientes')
@@ -12,10 +83,11 @@ async function loadClientDashboard() {
         .eq('id', currentClient.id)
         .maybeSingle();
 
-    if (clientError) throw clientError;
-    if (updatedClient) {
-        currentClient = updatedClient;
-        localStorage.setItem('cupissa_client_session', JSON.stringify(updatedClient));
+    if (clientError) {
+        console.warn('[CUPISSA PORTAL] No se pudo refrescar el registro de clientes; se conserva la cuenta autenticada:', clientError);
+    } else if (updatedClient) {
+        currentClient = { ...currentClient, ...updatedClient };
+        localStorage.setItem('cupissa_client_session', JSON.stringify(currentClient));
     }
 
     const clientName = String(currentClient.nombre || 'Cliente CUPISSA');
@@ -79,6 +151,7 @@ async function loadClientDashboard() {
     }
 
     selectPaymentOption('min');
+    await loadClientInstallments();
 
     // Si el usuario cerró o recargó la página después de una aprobación,
     // reintenta aplicar el abono guardado sin abrir otro cobro en Wompi.
