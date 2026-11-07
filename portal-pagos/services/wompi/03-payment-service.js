@@ -48,7 +48,7 @@
    */
   async function payWithWompi({ amount, paymentType, client }) {
     if (!client?.id || !client?.password) {
-      throw new Error('Tu sesión expiró. Ingresa nuevamente al Portal de Pagos.');
+      throw new Error('Tu cuenta está autenticada, pero el registro de crédito no tiene la credencial heredada que requiere actualmente la función segura de pagos. Contacta a CUPISSA para actualizar la vinculación.');
     }
 
     const prepared = await callEdge({
