@@ -61,6 +61,12 @@ function closeProfileModal() {
 
 window.addEventListener('message', event => {
     if (event.origin !== window.location.origin || !event.data) return;
+    if (event.data.type === 'CUPISSA_PORTAL_GOOGLE_TOP_LEVEL') {
+        const target = new URL(event.data.url, window.location.origin);
+        if (target.origin !== window.location.origin || target.pathname !== '/portal-pagos/' || target.searchParams.get('cupissa_google_popup') !== 'login') return;
+        window.location.assign(target.toString());
+        return;
+    }
     if (event.data.type === 'CUPISSA_GOOGLE_TOP_LEVEL') {
         const target = new URL(event.data.url, window.location.origin);
         if (target.origin !== window.location.origin || target.pathname !== '/perfil/' || !['login', 'register'].includes(target.searchParams.get('cupissa_google_popup'))) return;
@@ -186,3 +192,12 @@ if ('ResizeObserver' in window) {
     const banner = document.querySelector('.catalog-promo-banner');
     if (banner) new ResizeObserver(updateCatalogStickyOffset).observe(banner);
 }
+
+// Después de Google, recuperar el Portal integrado sin alterar la navegación móvil.
+window.addEventListener('load', () => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('cupissa_open_portal') !== '1') return;
+    url.searchParams.delete('cupissa_open_portal');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+    openPortalModal();
+});
