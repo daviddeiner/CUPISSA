@@ -1353,7 +1353,8 @@
     }
 
     try {
-      await AUTH().verifyEmailChangeOtp(email, code);
+      const cambioConfirmado = await AUTH().verifyEmailChangeOtp(email, code);
+      if (cleanEmail(cambioConfirmado?.user?.email) !== email) throw new Error('El correo aún no está confirmado en Authentication.');
 
       currentProfile.correo = email;
       currentClient.correo = email;
