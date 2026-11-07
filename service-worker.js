@@ -1,5 +1,5 @@
 /* CUPISSA | PWA Service Worker. Versionar esta constante cuando se publiquen cambios. */
-const CUPISSA_CACHE = 'cupissa-app-shell-v19-delivery-colors';
+const CUPISSA_CACHE = 'cupissa-app-shell-v21-otp-creditos-recorte';
 const CUPISSA_CACHE_PREFIX = 'cupissa-app-shell-';
 const CUPISSA_ASSETS = [
   'index.html',
@@ -21,10 +21,10 @@ const CUPISSA_ASSETS = [
   'catalogo/assets/js/00-config-state.js',
   'catalogo/assets/js/01-initialization.js',
   'catalogo/assets/js/01-tailwind-config.js',
-  'catalogo/assets/js/02-product-data.js',
+  'catalogo/assets/js/02-product-data.js?v=20261107-photo-crop',
   'catalogo/assets/js/03-filters-search.js',
-  'catalogo/assets/js/04-product-grid.js',
-  'catalogo/assets/js/05-product-modal.js',
+  'catalogo/assets/js/04-product-grid.js?v=20261107-photo-crop',
+  'catalogo/assets/js/05-product-modal.js?v=20261107-photo-crop',
   'catalogo/assets/js/06-cart-favorites-state.js',
   'catalogo/assets/js/07-cart.js',
   'catalogo/assets/js/08-checkout.js',
@@ -43,19 +43,21 @@ const CUPISSA_ASSETS = [
   'assets/css/checkout.css',
   'assets/js/checkout.js?v=20261106-domicilios-colores-1',
   'assets/css/perfil.css',
-  'assets/js/perfil.js',
+  'assets/js/perfil.js?v=20261107-otp-profile',
+  'shared/js/cupissa-auth.js?v=20261107-otp-link',
   'shared/js/supabase-config.js',
   'portal-pagos/index.html',
   'portal-pagos/assets/css/portal.css',
   'portal-pagos/assets/js/02-supabase-config-state.js',
-  'portal-pagos/assets/js/04-session.js',
-  'portal-pagos/assets/js/05-authentication.js',
-  'portal-pagos/assets/js/06-client-dashboard.js',
+  'portal-pagos/assets/js/04-session.js?v=20261107-session',
+  'portal-pagos/assets/js/05-authentication.js?v=20261107-otp-google',
+  'portal-pagos/assets/js/06-client-dashboard.js?v=20261107-cuotas',
   'portal-pagos/assets/js/07-payment-options.js',
   'portal-pagos/assets/js/08-payment-gateway.js',
   'portal-pagos/assets/js/09-formatters.js',
   'portal-pagos/services/wompi/02-date-and-late-fees.js',
-  'portal-pagos/services/wompi/04-checkout.js?v=20261104-swift-endpoint-2'
+  'portal-pagos/services/wompi/04-checkout.js?v=20261104-swift-endpoint-2',
+  'portal-pagos/services/wompi/03-payment-service.js?v=20261107-otp-auth'
 ];
 
 self.addEventListener('install', event => {
