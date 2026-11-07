@@ -17,7 +17,7 @@ function shuffleArray(array) {
             try {
                 const { data, error } = await supabaseClient
                     .from('productos')
-                    .select('*')
+                    .select('id,nombre,mundo,mundos,categoria,categorias,subcategoria,subcategorias,temporada,temporadas,precio_detal,precio_mayorista,cant_min_mayorista,porcentaje_anticipo,dias_preparacion,personalizable,al_por_mayor,venta,alquiler,credito,precio_alquiler,valor_deposito,tallas,colores,fotos,created_at,descripcion,accesorios,oculto')
                     .eq('oculto', false);
                 if (error) throw error;
                 allFetched = Array.isArray(data) ? data : [];
@@ -67,6 +67,29 @@ function shuffleArray(array) {
             }
         }
 
+        function normalizeProductFilterValues(arrayValue, legacyValue = '') {
+            let values = [];
+            if (Array.isArray(arrayValue)) {
+                values = arrayValue;
+            } else if (typeof arrayValue === 'string' && arrayValue.trim()) {
+                try {
+                    const parsed = JSON.parse(arrayValue);
+                    values = Array.isArray(parsed) ? parsed : [arrayValue];
+                } catch (_) {
+                    values = [arrayValue];
+                }
+            }
+            if (!values.length && legacyValue != null && String(legacyValue).trim()) {
+                values = [legacyValue];
+            }
+            const unique = [];
+            values.forEach(value => {
+                const clean = String(value ?? '').trim().toUpperCase();
+                if (clean && !unique.includes(clean)) unique.push(clean);
+            });
+            return unique;
+        }
+
         function normalizeProduct(p) {
             let fotosParsed = [];
             if (p.fotos) {
@@ -90,8 +113,21 @@ function shuffleArray(array) {
             coloresParsed = coloresParsed.map(color =>
                 typeof color === 'string'
                     ? { nombre: color, incremento: 0, foto: '' }
-                    : { ...color }
+                    : {
+                        nombre: String(color.nombre || color.color || '').trim(),
+                        incremento: Number(color.incremento || 0),
+                        foto: String(color.foto || color.imagen || color.imagen_url || '').trim()
+                    }
             );
+
+            // Productos antiguos: si cada color tiene una foto correspondiente por orden,
+            // vincularla automáticamente para que la selección sea bidireccional.
+            if (coloresParsed.length > 0 && fotosParsed.length === coloresParsed.length) {
+                coloresParsed = coloresParsed.map((color, index) => ({
+                    ...color,
+                    foto: color.foto || String(fotosParsed[index] || '')
+                }));
+            }
 
             // Cada foto asignada a un color también forma parte de la galería principal.
             coloresParsed.forEach(color => {
@@ -111,22 +147,28 @@ function shuffleArray(array) {
                     fotosOriginalesParsed = Array.isArray(parsed) ? parsed : [p.fotos_originales];
                 } catch (_) { fotosOriginalesParsed = [p.fotos_originales]; }
             }
-            if (!fotosOriginalesParsed.length) fotosOriginalesParsed = [...fotosParsed];
-            coloresParsed.forEach(color => {
-                const photo = String(color.foto || color.imagen || color.imagen_url || '').trim();
-                const original = String(color.foto_original || color.original || photo).trim();
-                if (photo && !fotosOriginalesParsed.includes(original)) fotosOriginalesParsed.push(original);
-            });
+            // Las fotos originales se conservan en la base para administración, nunca se exponen al cliente.
+            fotosOriginalesParsed = [];
+
+            const mundos = normalizeProductFilterValues(p.mundos, p.mundo || 'GENERAL');
+            const categorias = normalizeProductFilterValues(p.categorias, p.categoria || 'GENERAL');
+            const subcategorias = normalizeProductFilterValues(p.subcategorias, p.subcategoria || '');
+            const temporadas = normalizeProductFilterValues(p.temporadas, p.temporada || '');
 
             return {
                 id: p.id || 'p_' + Math.random().toString(36).substr(2, 9),
                 fechaRegistro: p.created_at || p.fecha_creacion || '',
                 nombre: (p.nombre || p.title || 'Producto Sin Nombre').toString(),
                 descripcion: (p.descripcion || p.description || '').toString(),
-                mundo: (p.mundo || 'GENERAL').toString().trim().toUpperCase(),
-                categoria: (p.categoria || 'GENERAL').toString().trim().toUpperCase(),
-                subcategoria: (p.subcategoria || '').toString().trim().toUpperCase(),
-                temporada: (p.temporada || '').toString().trim().toUpperCase(),
+                mundos,
+                categorias,
+                subcategorias,
+                temporadas,
+                // Campos singulares conservados para compatibilidad con el resto del catálogo.
+                mundo: mundos[0] || 'GENERAL',
+                categoria: categorias[0] || 'GENERAL',
+                subcategoria: subcategorias[0] || '',
+                temporada: temporadas[0] || '', 
                 precio_detal: parseFloat(p.precio_detal || p.precio || p.price || 0),
                 precio_mayorista: parseFloat(p.precio_mayorista || 0),
                 precio_alquiler: parseFloat(p.precio_alquiler || 0),
@@ -138,7 +180,7 @@ function shuffleArray(array) {
                 alquiler: (p.alquiler === true || p.alquiler === 1 || p.alquiler === '1' || String(p.alquiler).toLowerCase() === 'true') && parseFloat(p.precio_alquiler || 0) > 0,
                 venta: true,
                 fotos: fotosParsed,
-                fotos_originales: fotosOriginalesParsed,
+                fotos_originales: [],
                 tallas: parseProductArray(p.tallas),
                 colores: coloresParsed,
                 accesorios: parseProductArray(p.accesorios)
@@ -174,7 +216,7 @@ function shuffleArray(array) {
 
 
 function updateFeaturedSeasonProducts(forceShuffle = false) {
-    const seasonal = rawProducts.filter(product => String(product.temporada || '').trim());
+    const seasonal = rawProducts.filter(product => (product.temporadas || [product.temporada]).some(value => String(value || '').trim()));
     if (!seasonal.length) {
         featuredSeasonProducts = [];
         featuredSeasonName = '';
@@ -183,9 +225,15 @@ function updateFeaturedSeasonProducts(forceShuffle = false) {
 
     const seasonGroups = new Map();
     seasonal.forEach(product => {
-        const name = String(product.temporada || '').trim().toUpperCase();
-        if (!seasonGroups.has(name)) seasonGroups.set(name, []);
-        seasonGroups.get(name).push(product);
+        const productSeasons = product.temporadas?.length ? product.temporadas : [product.temporada];
+        productSeasons.forEach(season => {
+            const name = String(season || '').trim().toUpperCase();
+            if (!name) return;
+            if (!seasonGroups.has(name)) seasonGroups.set(name, []);
+            if (!seasonGroups.get(name).some(item => String(item.id) === String(product.id))) {
+                seasonGroups.get(name).push(product);
+            }
+        });
     });
 
     let chosenName = '';
