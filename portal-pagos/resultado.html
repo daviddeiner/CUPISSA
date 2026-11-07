@@ -80,10 +80,10 @@
       if(busy) return;
       if(!reference || !transactionId){ render('PENDING','No encontramos los datos de la transacción en esta dirección. Ingresa al portal y consulta el pago pendiente; no generes otro cobro.'); return; }
       let session=null; try{session=JSON.parse(localStorage.getItem('cupissa_client_session')||'null')}catch(_){}
-      if(!session?.id || !session?.password){ render('PENDING','Tu sesión no está disponible en este navegador. Ingresa al Portal de Pagos con tu cuenta para recuperar la confirmación.'); return; }
+      if(!session?.id){ render('PENDING','Tu sesión no está disponible en este navegador. Ingresa al Portal de Pagos con tu cuenta para recuperar la confirmación.'); return; }
       busy=true; retry.disabled=true; retry.textContent='Consultando Wompi…'; attempts++;
       try{
-        const {data,error}=await supabaseClient.functions.invoke('credit-payments',{body:{action:'confirm_credit_payment',clientId:String(session.id),clientPassword:String(session.password),reference,transactionId}});
+        const {data,error}=await supabaseClient.functions.invoke('credit-payments',{body:{action:'confirm_credit_payment',clientId:String(session.id),clientPassword:String(session.password || ''),reference,transactionId}});
         if(error){ let msg=''; try{const payload=await error.context?.json?.();msg=payload?.error||''}catch(_){} throw new Error(msg||'No se pudo consultar el servidor.'); }
         if(data?.error) throw new Error(data.error);
         const state=String(data?.status||'PENDING').toUpperCase();
