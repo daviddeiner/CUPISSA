@@ -1,5 +1,5 @@
 /* CUPISSA | PWA Service Worker. Versionar esta constante cuando se publiquen cambios. */
-const CUPISSA_CACHE = 'cupissa-app-shell-v22-rental-auth';
+const CUPISSA_CACHE = 'cupissa-app-shell-v24-google-mobile-v2';
 const CUPISSA_CACHE_PREFIX = 'cupissa-app-shell-';
 const CUPISSA_ASSETS = [
   'index.html',
@@ -30,7 +30,7 @@ const CUPISSA_ASSETS = [
   'catalogo/assets/js/08-checkout.js',
   'catalogo/assets/js/09-favorites.js',
   'catalogo/assets/js/10-formatters.js',
-  'catalogo/assets/js/11-responsive-navigation.js',
+  'catalogo/assets/js/11-responsive-navigation.js?v=20261107-google-mobile-v2',
   'catalogo/assets/js/12-cart-animation.js',
   'catalogo/assets/js/13-brand-ui.js',
   'catalogo/assets/js/14-product-activity.js',
@@ -43,8 +43,8 @@ const CUPISSA_ASSETS = [
   'assets/css/checkout.css',
   'assets/js/checkout.js?v=20261107-rental-stock-2',
   'assets/css/perfil.css',
-  'assets/js/perfil.js?v=20261107-google-direct-2',
-  'shared/js/cupissa-auth.js?v=20261107-otp-nopassword-2',
+  'assets/js/perfil.js?v=20261107-google-mobile-v2',
+  'shared/js/cupissa-auth.js?v=20261107-google-mobile-v2',
   'shared/js/supabase-config.js',
   'portal-pagos/index.html',
   'portal-pagos/assets/css/portal.css',
