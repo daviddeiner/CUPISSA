@@ -14,8 +14,9 @@ function addModalProductToCart() {
             const talla = selectTalla && selectTalla.value ? selectTalla.value : null;
             const color = selectColor && selectColor.value ? selectColor.value : null;
             const customText = inputCustom ? inputCustom.value.trim() : '';
-            const accesorio = selectAccesorio && selectAccesorio.value ? selectAccesorio.value : null;
-            const accesorioFoto = selectAccesorio && selectAccesorio.selectedOptions[0] ? (selectAccesorio.selectedOptions[0].dataset.photo || '') : '';
+            const accesoriosElegidos = typeof cupissaSelectedAccessories === 'function' ? cupissaSelectedAccessories() : [];
+            const accesorio = accesoriosElegidos.map(a => a.nombre).join(', ') || null;
+            const accesorioFoto = accesoriosElegidos[0]?.foto || '';
             const colorFoto = selectColor && selectColor.selectedOptions[0] ? (selectColor.selectedOptions[0].dataset.photo || '') : '';
             const modalMainPhoto = document.getElementById('opt-modal-img')?.src || '';
 
@@ -26,7 +27,7 @@ function addModalProductToCart() {
 
             if (selectTalla && selectTalla.selectedOptions[0]) unitPrice += parseFloat(selectTalla.selectedOptions[0].dataset.inc || 0);
             if (selectColor && selectColor.selectedOptions[0]) unitPrice += parseFloat(selectColor.selectedOptions[0].dataset.inc || 0);
-            if (selectAccesorio && selectAccesorio.selectedOptions[0]) unitPrice += parseFloat(selectAccesorio.selectedOptions[0].dataset.inc || 0);
+            unitPrice += accesoriosElegidos.reduce((total, a) => total + a.incremento, 0);
 
             const cartItem = {
                 cartId: `${selectedProductModal.id}_${Date.now()}`,
@@ -38,6 +39,7 @@ function addModalProductToCart() {
                 talla,
                 color,
                 accesorio,
+                accesorios: accesoriosElegidos,
                 accesorioFoto,
                 customText,
                 cantidad: selectedQtyModal,
