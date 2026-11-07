@@ -10,10 +10,10 @@ function renderFilters() {
             const subcategoriasSet = new Set();
 
             rawProducts.forEach(p => {
-                if (p.mundo) mundosSet.add(p.mundo);
-                if (p.temporada) temporadasSet.add(p.temporada);
-                if (p.categoria) categoriasSet.add(p.categoria);
-                if (p.subcategoria) subcategoriasSet.add(p.subcategoria);
+                (p.mundos?.length ? p.mundos : [p.mundo]).filter(Boolean).forEach(value => mundosSet.add(value));
+                (p.temporadas?.length ? p.temporadas : [p.temporada]).filter(Boolean).forEach(value => temporadasSet.add(value));
+                (p.categorias?.length ? p.categorias : [p.categoria]).filter(Boolean).forEach(value => categoriasSet.add(value));
+                (p.subcategorias?.length ? p.subcategorias : [p.subcategoria]).filter(Boolean).forEach(value => subcategoriasSet.add(value));
             });
 
             const mundosContainer = document.getElementById('mundos-container');
@@ -203,10 +203,10 @@ function renderFilters() {
             if (productSearchIndex.has(product)) return productSearchIndex.get(product);
             const fields = [
                 { value: product.nombre, weight: 1.00 },
-                { value: product.subcategoria, weight: 0.82 },
-                { value: product.categoria, weight: 0.70 },
-                { value: product.mundo, weight: 0.55 },
-                { value: product.temporada, weight: 0.45 },
+                { value: (product.subcategorias || [product.subcategoria]).join(' '), weight: 0.82 },
+                { value: (product.categorias || [product.categoria]).join(' '), weight: 0.70 },
+                { value: (product.mundos || [product.mundo]).join(' '), weight: 0.55 },
+                { value: (product.temporadas || [product.temporada]).join(' '), weight: 0.45 },
                 { value: product.descripcion, weight: 0.28 }
             ].map(field => ({
                 text: normalizeSearchText(field.value),
@@ -258,14 +258,16 @@ function renderFilters() {
             const query = (searchElement?.value || '').trim();
 
             const results = rawProducts.filter(p => {
-                const pMundo = (p.mundo || '').toString().toUpperCase().trim();
-                const pTemp = (p.temporada || '').toString().toUpperCase().trim();
-                const pCat = (p.categoria || '').toString().toUpperCase().trim();
-                const pSubcat = (p.subcategoria || '').toString().toUpperCase().trim();
-                const matchMundo = activeMundo === 'TODOS' || pMundo === activeMundo.toString().toUpperCase().trim();
-                const matchTemp = activeTemporada === 'TODAS' || pTemp === activeTemporada.toString().toUpperCase().trim();
-                const matchCat = activeCategoria === 'TODAS' || pCat === activeCategoria.toString().toUpperCase().trim();
-                const matchSubcat = activeSubcategoria === 'TODAS' || pSubcat === activeSubcategoria.toString().toUpperCase().trim();
+                const valuesFor = (plural, singular) => (Array.isArray(p[plural]) && p[plural].length ? p[plural] : [p[singular]])
+                    .map(value => String(value || '').toUpperCase().trim()).filter(Boolean);
+                const targetMundo = activeMundo.toString().toUpperCase().trim();
+                const targetTemp = activeTemporada.toString().toUpperCase().trim();
+                const targetCat = activeCategoria.toString().toUpperCase().trim();
+                const targetSubcat = activeSubcategoria.toString().toUpperCase().trim();
+                const matchMundo = activeMundo === 'TODOS' || valuesFor('mundos', 'mundo').includes(targetMundo);
+                const matchTemp = activeTemporada === 'TODAS' || valuesFor('temporadas', 'temporada').includes(targetTemp);
+                const matchCat = activeCategoria === 'TODAS' || valuesFor('categorias', 'categoria').includes(targetCat);
+                const matchSubcat = activeSubcategoria === 'TODAS' || valuesFor('subcategorias', 'subcategoria').includes(targetSubcat);
                 return matchMundo && matchTemp && matchCat && matchSubcat;
             });
 
