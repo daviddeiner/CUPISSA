@@ -5,6 +5,12 @@
 
 let cupissaCreditRealtimeChannel = null;
 let cupissaCreditRealtimeReloadTimer = null;
+// Respaldo para proyectos donde Realtime no está publicado o está restringido por RLS.
+setInterval(() => {
+    if (!document.hidden && typeof currentClient !== 'undefined' && currentClient?.id) {
+        loadClientDashboard().catch(error => console.warn('No se pudo actualizar el crédito:', error));
+    }
+}, 20000);
 
 function subscribeClientCreditRealtime(clientId) {
     if (!clientId || !supabaseClient.channel) return;
@@ -51,11 +57,19 @@ async function loadClientInstallments() {
         container.innerHTML = '<p class="py-6 text-center text-xs text-slate-400">No fue posible cargar el detalle de cuotas.</p>';
         return;
     }
-    if (!data?.length) {
-        container.innerHTML = '<p class="py-6 text-center text-xs text-slate-400">Todavía no hay cuotas programadas para tus créditos.</p>';
+    // Una cuota liquidada no es una deuda pendiente: excluirla de la tabla activa.
+    const liveCreditIds = new Set((activeCredits || []).map(c => String(c.id)));
+    const pending = (data || []).filter(item => {
+        if (!liveCreditIds.has(String(item.credito_id))) return false;
+        const status = String(item.estado || '').trim().toUpperCase();
+        return !['PAGADO', 'PAGADA', 'CANCELADO', 'CANCELADA'].includes(status)
+            && Number(item.monto_pagado || 0) < Number(item.valor_cuota || 0);
+    });
+    if (!pending.length) {
+        container.innerHTML = '<p class="py-6 text-center text-xs text-slate-400">No tienes cuotas pendientes.</p>';
         return;
     }
-    const rows = data.map(item => {
+    const rows = pending.map(item => {
         const paid = String(item.estado || '').toUpperCase() === 'PAGADO';
         const statusClass = paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700';
         const status = paid ? 'PAGADA' : 'PENDIENTE';
