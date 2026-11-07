@@ -256,7 +256,7 @@
     hideMessage('profile-login-error');
     hideMessage('profile-register-error');
 
-    $('profile-show-legacy-link')?.classList.remove('hidden');
+
   };
 
   /* ============================================================
@@ -573,74 +573,24 @@
 
     const linked = await AUTH().getLinkedAccount();
 
-    if (intent === 'login') {
-      if (linked?.client) {
-        AUTH().clearGoogleIntent();
-        await loadProfile(linked.client);
-        return true;
-      }
-
+    // Google OAuth ya verificó la titularidad del correo; nunca solicitar segundo OTP.
+    if (linked?.client) {
       AUTH().clearGoogleIntent();
-
-      showAuth();
-      showPanel('profile-legacy-link-panel');
-
-      const metadata = user.user_metadata || {};
-      const name = splitName(
-        metadata.full_name || metadata.name || ''
-      );
-
-      $('legacy-link-nombres').value =
-        metadata.given_name || name.nombres;
-
-      $('legacy-link-apellidos').value =
-        metadata.family_name || name.apellidos;
-
-      $('legacy-link-telefono').value =
-        metadata.telefono || '';
-
-      showMessage(
-        'profile-legacy-link-error',
-        'Tu cuenta de Google no está vinculada a un cliente CUPISSA. Si ya tenías una cuenta, vincúlala aquí.'
-      );
-
+      await loadProfile(linked.client);
       return true;
     }
-
-    if (intent === 'register') {
-      if (linked?.client) {
-        AUTH().clearGoogleIntent();
-        await loadProfile(linked.client);
-        return true;
-      }
-
-      pendingGoogleEmail = cleanEmail(user.email);
-
-      if (!pendingGoogleEmail) {
-        throw new Error(
-          'Google no devolvió un correo electrónico válido.'
-        );
-      }
-
-      $('profile-google-otp-email').textContent =
-        pendingGoogleEmail;
-
-      showAuth();
-      showPanel('profile-google-otp-panel');
-
-      hideFlowMessage('profile-google-otp-error');
-      hideFlowMessage('profile-google-otp-success');
-
-      await AUTH().sendGoogleRegistrationOtp(pendingGoogleEmail);
-
-      showFlowMessage(
-        'profile-google-otp-success',
-        'Te enviamos un código de seis dígitos. Revisa tu correo.',
-        true
-      );
-
-      return true;
-    }
+    pendingGoogleEmail = cleanEmail(user.email);
+    const metadata = user.user_metadata || {};
+    const parsed = splitName(metadata.full_name || metadata.name || '');
+    $('google-reg-email').value = pendingGoogleEmail;
+    $('google-reg-nombres').value = metadata.given_name || metadata.nombres || parsed.nombres || '';
+    $('google-reg-apellidos').value = metadata.family_name || metadata.apellidos || parsed.apellidos || '';
+    $('google-reg-telefono').value = metadata.telefono || '';
+    googleOtpVerified = true;
+    AUTH().clearGoogleIntent();
+    showAuth();
+    showPanel('profile-google-register-panel');
+    return true;
 
     return false;
   }
@@ -813,9 +763,9 @@
     const apellidos = cleanName($('reg-apellidos')?.value);
     const telefono = cleanPhone($('reg-telefono')?.value);
     const email = cleanEmail($('reg-email')?.value);
-    const password = $('reg-password')?.value || '';
 
-    if (!nombres || !apellidos || !telefono || !email || !password) {
+
+    if (!nombres || !apellidos || !telefono || !email) {
       showMessage(
         'profile-register-error',
         'Completa todos los campos para registrarte.'
@@ -831,13 +781,6 @@
       return;
     }
 
-    if (password.length < 6) {
-      showMessage(
-        'profile-register-error',
-        'La contraseña debe tener al menos seis caracteres.'
-      );
-      return;
-    }
 
     const button = $('profile-register-form')
       ?.querySelector('button[type="submit"]');
@@ -849,7 +792,6 @@
 
       const result = await AUTH().signUp({
         email,
-        password,
         nombres,
         apellidos,
         telefono
@@ -1882,24 +1824,26 @@
 
       if (linked?.user) {
         showAuth();
-        showPanel('profile-legacy-link-panel');
+        showPanel('profile-google-register-panel');
+        googleOtpVerified = true;
+        $('google-reg-email').value = cleanEmail(linked.user.email);
 
         const metadata = linked.user.user_metadata || {};
         const parsed = splitName(
           metadata.full_name || metadata.name || ''
         );
 
-        $('legacy-link-nombres').value =
+        $('google-reg-nombres').value =
           metadata.nombres ||
           metadata.given_name ||
           parsed.nombres;
 
-        $('legacy-link-apellidos').value =
+        $('google-reg-apellidos').value =
           metadata.apellidos ||
           metadata.family_name ||
           parsed.apellidos;
 
-        $('legacy-link-telefono').value =
+        $('google-reg-telefono').value =
           metadata.telefono || '';
 
         return;
