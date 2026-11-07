@@ -3,6 +3,34 @@
  * Código extraído de la versión original sin cambiar la lógica.
  */
 
+function cupissaNormalizePhotoUrl(value) {
+    try {
+        const url = new URL(String(value || ''), window.location.origin);
+        return decodeURIComponent(url.pathname).replace(/\/+/g, '/').toLowerCase();
+    } catch (_) { return String(value || '').trim().toLowerCase(); }
+}
+
+function cupissaFindColorForPhoto(product, photo) {
+    const key = cupissaNormalizePhotoUrl(photo);
+    return (product?.colores || []).find(color => {
+        const linked = String(color?.foto || color?.imagen || color?.imagen_url || '').trim();
+        return linked && cupissaNormalizePhotoUrl(linked) === key;
+    }) || null;
+}
+
+function cupissaSelectColorForPhoto(product, photo) {
+    const color = cupissaFindColorForPhoto(product, photo);
+    const select = document.getElementById('opt-select-color');
+    if (!color || !select) return;
+    const option = Array.from(select.options).find(item =>
+        String(item.value).trim().toUpperCase() === String(color.nombre || '').trim().toUpperCase()
+    );
+    if (option) {
+        select.value = option.value;
+        recalculateProductPrice();
+    }
+}
+
 function openOptionsModal(prodId) {
             const prod = rawProducts.find(p => String(p.id) === String(prodId));
             if (!prod) return;
@@ -23,7 +51,7 @@ function openOptionsModal(prodId) {
             updateModalidadUI();
 
             document.getElementById('opt-modal-title').innerText = prod.nombre;
-            document.getElementById('opt-modal-subcat').innerText = prod.subcategoria || prod.categoria || 'TEXTIL';
+            document.getElementById('opt-modal-subcat').innerText = (prod.subcategorias?.length ? prod.subcategorias : (prod.categorias?.length ? prod.categorias : [prod.subcategoria || prod.categoria || 'TEXTIL'])).join(' · ');
             document.getElementById('opt-modal-ref').innerText = `Ref: CUP-${prod.id.toString().slice(-4)}`;
 
             const wrapDesc = document.getElementById('wrapper-descripcion');
@@ -37,10 +65,25 @@ function openOptionsModal(prodId) {
 
             const badgesContainer = document.getElementById('opt-modal-badges');
             badgesContainer.innerHTML = '';
-            if (prod.subcategoria) badgesContainer.innerHTML += `<span class="bg-pink-600 text-white font-black text-[9px] uppercase px-2.5 py-1 rounded-full">${prod.subcategoria}</span>`;
+            const modalFilterBadges = [
+                ...(prod.subcategorias || []),
+                ...(prod.temporadas || [])
+            ];
+            modalFilterBadges.forEach(value => {
+                const badge = document.createElement('span');
+                badge.className = 'bg-pink-600 text-white font-black text-[9px] uppercase px-2.5 py-1 rounded-full';
+                badge.textContent = value;
+                badgesContainer.appendChild(badge);
+            });
 
             const mainImg = document.getElementById('opt-modal-img');
             const fotos = prod.fotos && prod.fotos.length > 0 ? prod.fotos : ['https://via.placeholder.com/400x400?text=Cupissa'];
+            mainImg.onload = () => {
+                if (mainImg.naturalWidth && mainImg.naturalHeight) {
+                    mainImg.style.aspectRatio = `${mainImg.naturalWidth} / ${mainImg.naturalHeight}`;
+                    mainImg.style.objectFit = 'contain';
+                }
+            };
             mainImg.src = fotos[0];
             mainImg.alt = `${prod.nombre} - CUPISSA`;
             mainImg.title = `${prod.nombre} - CUPISSA`;
@@ -59,6 +102,17 @@ function openOptionsModal(prodId) {
                         mainImg.src = url;
                         document.querySelectorAll('#opt-modal-thumbs img').forEach(t => t.className = 'w-12 h-12 object-cover rounded-xl border-2 border-transparent');
                         thumb.className = 'w-12 h-12 object-cover rounded-xl border-2 fuchsia-border';
+                        // Seleccionar una foto también selecciona el color que el administrador vinculó a ella.
+                        const matchedColor = cupissaFindColorForPhoto(selectedProductModal, url);
+                        if (matchedColor) {
+                            cupissaSelectColorForPhoto(selectedProductModal, url);
+                        } else {
+                            const colors = selectedProductModal.colores || [];
+                            if (colors.length === fotos.length && colors[idx]) {
+                                const select = document.getElementById('opt-select-color');
+                                if (select) { select.value = colors[idx].nombre; recalculateProductPrice(); }
+                            }
+                        }
                     };
                     thumbsContainer.appendChild(thumb);
                 });
@@ -242,10 +296,15 @@ function updateAccessoryChoiceState() {
             const mainImg = document.getElementById('opt-modal-img');
             if (!selectedProductModal || !selectColor || !mainImg) return;
 
-            const selectedPhoto = String(selectColor.selectedOptions[0]?.dataset.photo || '').trim();
+            let selectedPhoto = String(selectColor.selectedOptions[0]?.dataset.photo || '').trim();
+            if (!selectedPhoto) {
+                const colors = selectedProductModal.colores || [];
+                const selectedIndex = Array.from(selectColor.options).indexOf(selectColor.selectedOptions[0]);
+                if (colors.length === (selectedProductModal.fotos || []).length) selectedPhoto = String(selectedProductModal.fotos[selectedIndex] || '').trim();
+            }
             if (selectedPhoto) {
                 const photos = selectedProductModal.fotos || [];
-                const index = photos.findIndex(photo => String(photo) === selectedPhoto);
+                const index = photos.findIndex(photo => cupissaNormalizePhotoUrl(photo) === cupissaNormalizePhotoUrl(selectedPhoto));
                 activePhotoIndex = index >= 0 ? index : 0;
                 mainImg.src = selectedPhoto;
                 document.querySelectorAll('#opt-modal-thumbs img').forEach((thumb, thumbIndex) => {
@@ -265,11 +324,11 @@ function updateAccessoryChoiceState() {
 
         function openFullImageModal() {
             if (!selectedProductModal) return;
-            const originals = selectedProductModal.fotos_originales || selectedProductModal.fotos || [];
-            const srcOriginal = originals[activePhotoIndex] || originals[0] || 'https://via.placeholder.com/800x800?text=Cupissa';
+            const croppedPhotos = selectedProductModal.fotos || [];
+            const srcOriginal = croppedPhotos[activePhotoIndex] || croppedPhotos[0] || 'https://via.placeholder.com/800x800?text=Cupissa';
             const fullImg = document.getElementById('full-modal-img');
             fullImg.src = srcOriginal;
-            fullImg.alt = `${selectedProductModal.nombre} - Foto completa - CUPISSA`;
+            fullImg.alt = `${selectedProductModal.nombre} - CUPISSA`;
             document.getElementById('modal-full-image').classList.remove('hidden');
         }
 
@@ -279,7 +338,7 @@ function updateAccessoryChoiceState() {
             const overlay = document.getElementById('modal-full-image');
             if (!photo || !fullImg || !overlay) return;
             fullImg.src = photo;
-            fullImg.alt = `${accessoryName || 'Accesorio'} - Foto completa - CUPISSA`;
+            fullImg.alt = `${accessoryName || 'Accesorio'} - CUPISSA`;
             overlay.classList.remove('hidden');
         }
 
