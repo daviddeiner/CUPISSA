@@ -1,5 +1,5 @@
 /* CUPISSA | PWA Service Worker. Versionar esta constante cuando se publiquen cambios. */
-const CUPISSA_CACHE = 'cupissa-app-shell-v21-otp-creditos-recorte';
+const CUPISSA_CACHE = 'cupissa-app-shell-v22-rental-auth';
 const CUPISSA_CACHE_PREFIX = 'cupissa-app-shell-';
 const CUPISSA_ASSETS = [
   'index.html',
@@ -21,10 +21,10 @@ const CUPISSA_ASSETS = [
   'catalogo/assets/js/00-config-state.js',
   'catalogo/assets/js/01-initialization.js',
   'catalogo/assets/js/01-tailwind-config.js',
-  'catalogo/assets/js/02-product-data.js?v=20261107-photo-crop',
+  'catalogo/assets/js/02-product-data.js?v=20261107-product-card-2',
   'catalogo/assets/js/03-filters-search.js',
-  'catalogo/assets/js/04-product-grid.js?v=20261107-photo-crop',
-  'catalogo/assets/js/05-product-modal.js?v=20261107-photo-crop',
+  'catalogo/assets/js/04-product-grid.js?v=20261107-product-card-2',
+  'catalogo/assets/js/05-product-modal.js?v=20261107-product-card-2',
   'catalogo/assets/js/06-cart-favorites-state.js',
   'catalogo/assets/js/07-cart.js',
   'catalogo/assets/js/08-checkout.js',
@@ -41,10 +41,10 @@ const CUPISSA_ASSETS = [
   'catalogo/assets/images/app-icon-512.png',
   'catalogo/assets/images/app-icon-180.png',
   'assets/css/checkout.css',
-  'assets/js/checkout.js?v=20261106-domicilios-colores-1',
+  'assets/js/checkout.js?v=20261107-rental-stock-2',
   'assets/css/perfil.css',
-  'assets/js/perfil.js?v=20261107-otp-profile',
-  'shared/js/cupissa-auth.js?v=20261107-otp-link',
+  'assets/js/perfil.js?v=20261107-google-direct-2',
+  'shared/js/cupissa-auth.js?v=20261107-otp-nopassword-2',
   'shared/js/supabase-config.js',
   'portal-pagos/index.html',
   'portal-pagos/assets/css/portal.css',
