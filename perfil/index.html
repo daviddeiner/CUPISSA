@@ -930,6 +930,7 @@
                 Correo electrónico
               </label>
 
+              <button type="button" onclick="startProfileEmailChange()" class="text-xs font-bold text-pink-600 mb-2 hover:underline">Cambiar correo</button>
               <input
                 id="edit-correo"
                 class="profile-input bg-slate-100 text-slate-500 cursor-not-allowed"
@@ -1002,22 +1003,39 @@
         <!-- VERIFICACIÓN DE CAMBIO DE CORREO -->
         <section
           id="profile-email-otp-panel"
-          class="hidden mt-5 border-t border-slate-100 pt-5 space-y-4"
+          class="hidden fixed inset-0 z-[9999] items-center justify-center bg-slate-950/60 px-4 py-6 overflow-y-auto"
         >
-          <div>
+          <div class="relative w-full max-w-md mx-auto my-auto rounded-3xl bg-white p-6 shadow-2xl space-y-4 border border-pink-100">
+            <button type="button" onclick="closeProfileEmailChange()" aria-label="Cerrar cambio de correo" class="absolute right-4 top-3 text-2xl font-bold text-slate-500 hover:text-pink-600">&times;</button>
+          <div class="pr-6">
             <h3 class="font-black text-slate-900">
-              Verificar nuevo correo
+              Cambiar correo electrónico
             </h3>
 
             <p class="text-xs text-slate-500 mt-1">
-              Escribe el código enviado a tu nueva dirección de correo.
+              Primero verifica tu correo actual y luego el nuevo.
             </p>
           </div>
 
+          <div id="profile-email-old-stage" class="hidden">
+            <p class="text-sm mb-2">Introduce el código enviado a tu correo actual.</p>
+            <form onsubmit="verifyProfileOldEmail(event)" class="flex gap-2">
+              <input id="profile-email-old-code" class="profile-input" inputmode="numeric" maxlength="6" required placeholder="Código de 6 dígitos">
+              <button class="profile-primary" type="submit">Verificar</button>
+            </form>
+          </div>
+          <div id="profile-email-new-stage" class="hidden">
+            <form id="profile-email-new-request" onsubmit="requestProfileNewEmail(event)" class="space-y-2">
+              <label class="profile-label" for="profile-email-new-address">Nuevo correo electrónico</label>
+              <input id="profile-email-new-address" class="profile-input" type="email" required placeholder="nuevo@correo.com">
+              <button class="profile-primary w-full" type="submit">Enviar código al nuevo correo</button>
+            </form>
+          </div>
           <div id="profile-email-otp-error" class="profile-flow-error"></div>
           <div id="profile-email-otp-success" class="profile-flow-success"></div>
 
           <form
+            style="display:none"
             id="profile-email-otp-form"
             onsubmit="verifyProfileEmailChange(event)"
             class="space-y-3"
@@ -1039,6 +1057,7 @@
               Confirmar nuevo correo
             </button>
           </form>
+          </div>
         </section>
 
       </section>
@@ -1131,8 +1150,8 @@
   ======================================================== -->
   <script src="/shared/js/supabase-config.js"></script>
   <script src="/catalogo/assets/js/00-config-state.js"></script>
-  <script src="/shared/js/cupissa-auth.js?v=20261107-google-mobile-v2"></script>
-  <script src="/assets/js/perfil.js?v=20261107-google-mobile-v2"></script>
+  <script src="/shared/js/cupissa-auth.js?v=20261107-otp-modal-v3"></script>
+  <script src="/assets/js/perfil.js?v=20261107-otp-modal-v3"></script>
 
     <script src="/shared/js/security-console-notice.js?v=20261107-security-1"></script>
 </body>
