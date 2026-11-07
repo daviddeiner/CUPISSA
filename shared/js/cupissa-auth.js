@@ -699,22 +699,36 @@
     const correo = validateEmail(email);
     const token = validateOtp(code);
 
-    const { data, error } = await db.auth.verifyOtp({
+    // Un OTP aceptado no significa necesariamente que Supabase ya haya
+    // cambiado el correo (puede estar pendiente una segunda confirmación).
+    const { error } = await db.auth.verifyOtp({
       email: correo,
       token,
       type: 'email_change'
     });
-
     if (error) throwFriendly(error);
 
-    const sync = await db.rpc('cupissa_sync_my_email');
-
-    if (sync.error) {
-      console.error('[CUPISSA AUTH] No se pudo sincronizar el correo:', sync.error);
-      throw new Error('El correo se verificó, pero no se pudo actualizar la ficha de cliente. Contacta a CUPISSA para sincronizarlo.');
+    let { data: current, error: userError } = await db.auth.getUser();
+    if (userError) throwFriendly(userError);
+    if (cleanEmail(current?.user?.email) !== correo) {
+      const refreshed = await db.auth.refreshSession();
+      if (refreshed.error) throwFriendly(refreshed.error);
+      const latest = await db.auth.getUser();
+      if (latest.error) throwFriendly(latest.error);
+      current = latest.data;
+    }
+    if (cleanEmail(current?.user?.email) !== correo) {
+      throw new Error('El código fue recibido, pero Supabase aún no confirmó el cambio de correo. Revisa si falta confirmar el mensaje enviado al correo anterior y vuelve a entrar al perfil.');
     }
 
-    return data;
+    // Esta RPC es SECURITY DEFINER y sincroniza las dos fichas del cliente.
+    // No confirmamos visualmente el cambio si dicha sincronización falla.
+    const sync = await db.rpc('cupissa_sync_my_email');
+    if (sync.error || sync.data !== true) {
+      console.error('[CUPISSA AUTH] Sincronización de correo:', sync.error || sync.data);
+      throw new Error('El correo ya cambió en Authentication, pero falta sincronizar las fichas de CUPISSA. Solicita al equipo que revise la sincronización antes de continuar.');
+    }
+    return { user: current.user, email: correo };
   }
 
   /* ============================================================
