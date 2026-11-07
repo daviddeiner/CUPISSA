@@ -900,8 +900,10 @@
           altFormat: 'l, j F Y',
           minDate: addDays(localDateKey(), 1),
           allowInput: false,
-          onChange: () =>
-            $('rental-date')?.setCustomValidity('')
+          onChange: () => {
+            $('rental-date')?.setCustomValidity('');
+            void notifyRentalDateAvailability();
+          }
         }
       );
     }
@@ -915,6 +917,7 @@
 
     recalculateCartAmounts();
     renderMiniCart();
+    void notifyRentalDateAvailability();
 
     if (
       $('checkout-step-2') &&
@@ -1643,7 +1646,32 @@
     });
   }
 
-  function continueFromForm() {
+  let rentalAvailabilitySequence = 0;
+  async function verifyRentalStock() {
+    const rentals=getCheckoutItems().filter(item=>item.modalidad==='ALQUILER');
+    if(!rentals.length)return true;
+    const date=$('rental-date')?.value||'';
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return true;
+    const {data,error}=await supabaseClient.rpc('cupissa_verificar_alquiler',{
+      p_fecha:date,p_dias:Number(rentalDays||1),p_productos:rentals
+    });
+    if(error){showAlert('No se pudo verificar el inventario de alquiler. Inténtalo de nuevo.');return false}
+    if(data?.disponible !== true){
+      showAlert(rentals.length>1?'Uno de tus productos no tiene suficientes unidades disponibles en alquiler para esa fecha.':'Este producto no tiene suficientes unidades disponibles en alquiler para esa fecha.');
+      return false;
+    }
+    return true;
+  }
+  async function notifyRentalDateAvailability(){
+    const token=++rentalAvailabilitySequence;
+    const ok=await verifyRentalStock();
+    if(token!==rentalAvailabilitySequence)return;
+    const note=$('rental-date-note');
+    if(note&& !ok){note.classList.remove('hidden');note.textContent='No hay suficientes unidades en alquiler para la fecha seleccionada.'}
+  }
+
+  async function continueFromForm() {
+    if (!(await verifyRentalStock())) return;
     if (!validateForm()) return;
 
     selectedPaymentMode = '';
@@ -1893,6 +1921,7 @@
 
     if (!['full', 'deposit'].includes(mode)) return;
 
+    if (!(await verifyRentalStock())) return;
     if (!validateForm()) {
       showStep(1);
       return;
