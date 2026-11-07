@@ -90,8 +90,19 @@ function backToClientEmailLogin() {
 }
 
 async function handleClientGoogleLogin() {
+    // Google no permite OAuth dentro del iframe del catálogo móvil.
+    if (window.self !== window.top) {
+        const url = new URL('/portal-pagos/', window.location.origin);
+        url.searchParams.set('cupissa_google_popup', 'login');
+        url.searchParams.set('cupissa_mobile_return', '1');
+        window.parent.postMessage({ type: 'CUPISSA_PORTAL_GOOGLE_TOP_LEVEL', url: url.toString() }, window.location.origin);
+        return;
+    }
     try {
-        await window.CUPISSAAuth.signInGoogle('login', new URL('/portal-pagos/', window.location.origin).toString());
+        const redirect = new URL('/portal-pagos/', window.location.origin);
+        redirect.searchParams.set('cupissa_google_return', '1');
+        if (new URLSearchParams(window.location.search).get('cupissa_mobile_return') === '1') redirect.searchParams.set('cupissa_mobile_return', '1');
+        await window.CUPISSAAuth.signInGoogle('login', redirect.toString());
     } catch (error) {
         const errorDiv = document.getElementById('login-error');
         errorDiv.querySelector('span').textContent = error?.message || 'No fue posible iniciar sesión con Google.';
@@ -122,3 +133,11 @@ async function handleLogout() {
     document.getElementById('client-login-form').reset();
     backToClientEmailLogin();
 }
+
+// Continuación de Google en navegación principal (nunca dentro del iframe).
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cupissa_google_popup') !== 'login') return;
+    if (window.self !== window.top) return;
+    handleClientGoogleLogin();
+});
