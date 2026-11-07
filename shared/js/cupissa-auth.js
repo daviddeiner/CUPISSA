@@ -286,7 +286,6 @@
 
   async function signUp({
     email,
-    password,
     nombres,
     apellidos,
     telefono
@@ -306,23 +305,12 @@
       throw new Error('Ingresa tu número de teléfono.');
     }
 
-    if (!password || String(password).length < 6) {
-      throw new Error('La contraseña debe tener al menos 6 caracteres.');
-    }
-
     await checkPhoneAvailable(celular);
 
-    const { data, error } = await db.auth.signUp({
+    const { data, error } = await db.auth.signInWithOtp({
       email: correo,
-      password: String(password),
-      options: {
-        emailRedirectTo: REDIRECT_URL,
-        data: {
-          nombres: cleanName(nombres),
-          apellidos: cleanName(apellidos),
-          telefono: celular,
-          cupissa_registration: true
-        }
+      options: { shouldCreateUser: true, emailRedirectTo: REDIRECT_URL,
+        data: { nombres: cleanName(nombres), apellidos: cleanName(apellidos), telefono: celular, cupissa_registration: true }
       }
     });
 
@@ -350,7 +338,7 @@
     const { data, error } = await db.auth.verifyOtp({
       email: correo,
       token,
-      type: 'signup'
+      type: 'email'
     });
 
     if (error) throwFriendly(error);
@@ -365,9 +353,9 @@
   async function resendSignupOtp(email) {
     const correo = validateEmail(email);
 
-    const { data, error } = await db.auth.resend({
-      type: 'signup',
-      email: correo
+    const { data, error } = await db.auth.signInWithOtp({
+      email: correo,
+      options: { shouldCreateUser: false, emailRedirectTo: REDIRECT_URL }
     });
 
     if (error) throwFriendly(error);
@@ -415,7 +403,7 @@
     const correo = validateEmail(email);
     const { data, error } = await db.auth.signInWithOtp({
       email: correo,
-      options: { shouldCreateUser: true, emailRedirectTo: redirectTo || REDIRECT_URL }
+      options: { shouldCreateUser: false, emailRedirectTo: redirectTo || REDIRECT_URL }
     });
     if (error) throwFriendly(error);
     return data;
