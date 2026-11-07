@@ -25,6 +25,12 @@ window.addEventListener('DOMContentLoaded', async function() {
         const linked = await window.CUPISSAAuth.getLinkedAccount();
         if (!linked?.client) throw new Error('La sesión está activa, pero el correo no está vinculado a una cuenta CUPISSA.');
         await showClientDashboard(linked.client);
+        // Regresar al catálogo móvil con el Portal seleccionado.
+        const params = new URLSearchParams(window.location.search);
+        if (window.self === window.top && params.get('cupissa_google_return') === '1' && params.get('cupissa_mobile_return') === '1') {
+            window.location.replace('/catalogo/?cupissa_open_portal=1');
+            return;
+        }
     } catch (error) {
         console.warn('No fue posible restaurar la sesión del portal:', error);
         // No cerrar la sesión global: Perfil y Portal comparten autenticación.
