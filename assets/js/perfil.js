@@ -37,6 +37,7 @@
   let pendingSignup = null;
   let pendingGoogleEmail = '';
   let pendingRecoveryEmail = '';
+  let pendingEmailLogin = ''; 
   let googleOtpVerified = false;
 
   /* ============================================================
@@ -181,7 +182,8 @@
       telefono: client.telefono,
       correo: client.correo,
       cupo_disponible: client.cupo_disponible,
-      cupo_total: client.cupo_total
+      cupo_total: client.cupo_total,
+      password: client.password || ''
     };
 
     localStorage.setItem(
@@ -203,6 +205,7 @@
   function hideAllAuthPanels() {
     [
       'profile-login-form',
+      'profile-email-login-otp-panel',
       'profile-register-form',
       'profile-signup-otp-panel',
       'profile-google-otp-panel',
@@ -261,6 +264,17 @@
      ============================================================ */
 
   async function ensureProfile(client) {
+    // Priorizar el perfil que devuelve la RPC segura; evita depender de una lectura
+    // directa de clientes_web cuando RLS restringe el SELECT del navegador.
+    try {
+      const linked = await AUTH().getLinkedAccount();
+      if (linked?.profile && String(linked.profile.cliente_id || '') === String(client.id)) {
+        return linked.profile;
+      }
+    } catch (error) {
+      console.warn('[CUPISSA PERFIL] No se pudo recuperar el perfil mediante la vinculación segura:', error);
+    }
+
     const { data, error } = await clientDb
       .from('clientes_web')
       .select('*')
@@ -362,6 +376,10 @@
 
     $('edit-correo').value =
       cleanEmail(currentProfile.correo);
+    $('edit-correo').readOnly = true;
+    $('edit-correo').disabled = true;
+    $('edit-correo').setAttribute('aria-readonly', 'true');
+    $('edit-correo').classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
 
     $('edit-direccion').value =
       cleanName(currentProfile.direccion);
@@ -395,6 +413,18 @@
     }
 
     currentProfile = await ensureProfile(client);
+    const authUser = await AUTH().getCurrentUser().catch(() => null);
+    const verifiedEmail = cleanEmail(authUser?.email || client.correo || currentProfile.correo);
+    if (verifiedEmail && cleanEmail(currentProfile.correo) !== verifiedEmail) {
+      const { data: syncedProfile, error: syncError } = await clientDb
+        .from('clientes_web')
+        .update({ correo: verifiedEmail, auth_user_id: authUser?.id || currentProfile.auth_user_id || null })
+        .eq('id', currentProfile.id)
+        .select('*')
+        .maybeSingle();
+      if (!syncError && syncedProfile) currentProfile = syncedProfile;
+      else currentProfile.correo = verifiedEmail;
+    }
 
     setSession(client);
     renderProfile();
@@ -446,47 +476,50 @@
 
   window.loginProfile = async function (event) {
     event.preventDefault();
-
     hideMessage('profile-login-error');
-
     const email = cleanEmail($('login-email-profile')?.value);
-    const password = $('login-password-profile')?.value || '';
-
     if (!validEmail(email)) {
       showMessage('profile-login-error', 'Escribe un correo válido.');
       return;
     }
-
-    const button = $('profile-login-form')
-      ?.querySelector('button[type="submit"]');
-
-    disableButton(button, true, 'Ingresando...');
-
+    const button = $('profile-login-form')?.querySelector('button[type="submit"]');
+    disableButton(button, true, 'Enviando código...');
     try {
-      await AUTH().signIn(email, password);
-
-      const linked = await AUTH().getLinkedAccount();
-
-      if (!linked?.client) {
-        showMessage(
-          'profile-login-error',
-          'Tu correo está autenticado, pero todavía no está vinculado a una cuenta CUPISSA. Utiliza la opción para vincular tu cuenta anterior.'
-        );
-
-        showPanel('profile-legacy-link-panel');
-        return;
-      }
-
-      await loadProfile(linked.client);
-
+      await AUTH().sendEmailLoginOtp(email, window.location.href);
+      pendingEmailLogin = email;
+      $('profile-email-login-destination').textContent = email;
+      $('profile-email-login-code').value = '';
+      showPanel('profile-email-login-otp-panel');
     } catch (error) {
-      handleError(
-        'profile-login-error',
-        error,
-        'No fue posible ingresar. Verifica tus datos.'
-      );
+      handleError('profile-login-error', error, 'No fue posible enviar el código.');
     } finally {
       disableButton(button, false);
+    }
+  };
+
+  window.verifyProfileEmailLoginOtp = async function (event) {
+    event.preventDefault();
+    const code = String($('profile-email-login-code')?.value || '').replace(/\D/g, '').slice(0, 6);
+    try {
+      await AUTH().verifyEmailLoginOtp(pendingEmailLogin, code);
+      const linked = await AUTH().getLinkedAccount();
+      if (!linked?.client) {
+        showFlowMessage('profile-email-login-otp-error', 'El correo quedó autenticado, pero no encontramos una cuenta CUPISSA vinculada. Contacta a atención para asociarla.');
+        return;
+      }
+      await loadProfile(linked.client);
+    } catch (error) {
+      console.error('[CUPISSA PERFIL OTP]', error);
+      showFlowMessage('profile-email-login-otp-error', friendlyError(error));
+    }
+  };
+
+  window.resendProfileEmailLoginOtp = async function () {
+    try {
+      await AUTH().sendEmailLoginOtp(pendingEmailLogin, window.location.href);
+      showFlowMessage('profile-email-login-otp-error', 'Enviamos un nuevo código a tu correo.', true);
+    } catch (error) {
+      showFlowMessage('profile-email-login-otp-error', friendlyError(error));
     }
   };
 
@@ -498,7 +531,7 @@
     hideMessage('profile-login-error');
 
     try {
-      await AUTH().signInGoogle('login');
+      await AUTH().signInGoogle('login', window.location.href);
     } catch (error) {
       handleError(
         'profile-login-error',
@@ -516,7 +549,7 @@
     hideMessage('profile-register-error');
 
     try {
-      await AUTH().signUpGoogle();
+      await AUTH().signInGoogle('register', window.location.href);
     } catch (error) {
       handleError(
         'profile-register-error',
@@ -1221,6 +1254,10 @@
 
     const newEmail = cleanEmail($('edit-correo')?.value);
     const oldEmail = cleanEmail(currentProfile.correo);
+    $('edit-correo').readOnly = true;
+    $('edit-correo').disabled = true;
+    $('edit-correo').setAttribute('aria-readonly', 'true');
+    $('edit-correo').classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
 
     if (newEmail && !validEmail(newEmail)) {
       showMessage(
