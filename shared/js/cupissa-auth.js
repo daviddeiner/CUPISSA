@@ -22,7 +22,7 @@
   const REDIRECT_URL = new URL('/perfil/', window.location.origin).toString();
 
   const DUPLICATE_PHONE =
-    'EL TELEFONO YA ESTA REGISTRADO, RECUPERA TU CONTRASEÑA O USA UNO NUEVO';
+    'Este teléfono ya está registrado. Inicia sesión con tu correo o utiliza otro número.';
 
   function cleanEmail(email) {
     return String(email || '').trim().toLowerCase();
@@ -61,14 +61,14 @@
       message.includes('already registered') ||
       message.includes('already exists')
     ) {
-      return 'Este correo ya tiene una cuenta. Inicia sesión o recupera tu contraseña.';
+      return 'Este correo ya está registrado. Inicia sesión con tu código de acceso.';
     }
 
     if (
       message.includes('invalid login credentials') ||
       message.includes('invalid credentials')
     ) {
-      return 'El correo o la contraseña no son correctos.';
+      return 'No fue posible validar el acceso. Comprueba el correo e inténtalo nuevamente.';
     }
 
     if (
@@ -280,6 +280,16 @@
     return true;
   }
 
+  async function checkEmailAvailable(email) {
+    const correo = validateEmail(email);
+    for (const tabla of ['clientes_web', 'clientes']) {
+      const { data, error } = await db.from(tabla).select('id').ilike('correo', correo).limit(1);
+      if (error) throwFriendly(error);
+      if (data?.length) throw new Error('Este correo ya está registrado. Inicia sesión con tu código de acceso.');
+    }
+    return true;
+  }
+
   /* ============================================================
      REGISTRO TRADICIONAL
      Crea el usuario Auth y envía OTP de registro.
@@ -308,6 +318,7 @@
     }
 
     await checkPhoneAvailable(celular);
+    await checkEmailAvailable(correo);
 
     const { data, error } = await db.auth.signInWithOtp({
       email: correo,
@@ -699,10 +710,8 @@
     const sync = await db.rpc('cupissa_sync_my_email');
 
     if (sync.error) {
-      console.error(
-        '[CUPISSA AUTH] No se pudo sincronizar el correo:',
-        sync.error
-      );
+      console.error('[CUPISSA AUTH] No se pudo sincronizar el correo:', sync.error);
+      throw new Error('El correo se verificó, pero no se pudo actualizar la ficha de cliente. Contacta a CUPISSA para sincronizarlo.');
     }
 
     return data;
@@ -732,6 +741,7 @@
     getLinkedAccount,
 
     checkPhoneAvailable,
+    checkEmailAvailable,
 
     signUp,
     verifySignupOtp,
