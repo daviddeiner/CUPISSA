@@ -1225,6 +1225,7 @@
   }
 
   function fillCustomerForm(profile) {
+    // Los datos de identidad provienen del perfil y no se editan durante el pedido.
     const fullName = (
       `${profile.nombres || ''} ${profile.apellidos || ''}`
     )
@@ -1255,6 +1256,11 @@
       profile.telefono ||
       clientSession?.telefono ||
       '';
+
+    ['customer-first-name','customer-last-name','customer-email','customer-phone'].forEach(id => {
+      const field = $(id);
+      if (field) { field.readOnly = true; field.setAttribute('aria-readonly', 'true'); }
+    });
 
     $('customer-address').value =
       String(profile.direccion || '')
@@ -2094,6 +2100,70 @@
     }
   }
 
+
+  async function askToSavePreferredAddress(customer) {
+    if (!customer || !clientSession?.telefono) return;
+    const phone = String(clientSession.telefono).trim();
+    const { data: profile, error } = await supabaseClient
+      .from('clientes_web')
+      .select('id,direccion,barrio,ciudad')
+      .eq('telefono', phone)
+      .maybeSingle();
+    if (error || !profile) {
+      if (error) console.warn('[CUPISSA] No se pudo consultar la dirección del perfil:', error);
+      return;
+    }
+
+    const nextAddress = {
+      direccion: String(customer.direccion || '').trim(),
+      barrio: String(customer.barrio || '').trim(),
+      ciudad: String(customer.ciudad || '').trim()
+    };
+    if (!nextAddress.direccion) return;
+
+    const hasSavedAddress = !!String(profile.direccion || '').trim();
+    const sameAddress = ['direccion','barrio','ciudad'].every(key =>
+      String(profile[key] || '').trim().toLocaleUpperCase('es-CO') ===
+      String(nextAddress[key] || '').trim().toLocaleUpperCase('es-CO')
+    );
+
+    let shouldSave = !hasSavedAddress;
+    if (hasSavedAddress && !sameAddress) {
+      shouldSave = await new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'fixed inset-0 z-[9999] flex items-center justify-center p-4';
+        overlay.style.cssText = 'background:rgba(15,23,42,.55);backdrop-filter:blur(5px)';
+        overlay.innerHTML = `
+          <div role="dialog" aria-modal="true" class="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-pink-100">
+            <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-pink-50 text-pink-600"><i class="fa-solid fa-location-dot text-xl"></i></div>
+            <h3 class="text-center text-lg font-black text-slate-900">¿Guardar esta dirección?</h3>
+            <p class="mt-2 text-center text-sm text-slate-500">Usaste una dirección diferente a la predeterminada. ¿Quieres dejarla como tu dirección principal?</p>
+            <p class="mt-3 rounded-xl bg-pink-50 p-3 text-xs font-bold text-pink-800">${escapeHtml(nextAddress.direccion)}${nextAddress.barrio ? `, ${escapeHtml(nextAddress.barrio)}` : ''}${nextAddress.ciudad ? `, ${escapeHtml(nextAddress.ciudad)}` : ''}</p>
+            <div class="mt-5 grid grid-cols-2 gap-2">
+              <button type="button" data-choice="no" class="rounded-xl bg-slate-100 px-4 py-3 text-xs font-black text-slate-600">Cancelar</button>
+              <button type="button" data-choice="yes" class="rounded-xl bg-pink-600 px-4 py-3 text-xs font-black text-white">Aceptar</button>
+            </div>
+          </div>`;
+        overlay.addEventListener('click', event => {
+          const choice = event.target.closest('[data-choice]')?.dataset.choice;
+          if (!choice) return;
+          overlay.remove();
+          resolve(choice === 'yes');
+        });
+        document.body.appendChild(overlay);
+      });
+    }
+
+    if (shouldSave) {
+      const { error: updateError } = await supabaseClient
+        .from('clientes_web')
+        .update(nextAddress)
+        .eq('id', profile.id);
+      if (updateError) console.warn('[CUPISSA] No se pudo guardar la dirección predeterminada:', updateError);
+      else clientProfile = { ...clientProfile, ...nextAddress };
+    }
+  }
+
   /* =====================================================
      CONSULTAR Y CONFIRMAR PAGO
   ===================================================== */
@@ -2161,6 +2231,11 @@
         status === 'APPROVED' &&
         (result.order || result.orders?.length)
       ) {
+        // La primera dirección de entrega se guarda como predeterminada.
+        // Si ya existe otra, el cliente decide si desea reemplazarla.
+        try { await askToSavePreferredAddress(pending.customer || {}); }
+        catch (addressError) { console.warn('[CUPISSA] No se pudo actualizar la dirección del perfil:', addressError); }
+
         // Eliminar únicamente el pago confirmado.
         removePendingWebPayment(pending.reference);
 
