@@ -152,10 +152,12 @@
      ============================================================ */
 
   async function getCurrentUser() {
+    const { data: sessionData, error: sessionError } = await db.auth.getSession();
+    if (sessionError) throwFriendly(sessionError);
+    if (!sessionData?.session) return null;
     const { data, error } = await db.auth.getUser();
-
+    if (error?.name === 'AuthSessionMissingError') return null;
     if (error) throwFriendly(error);
-
     return data?.user || null;
   }
 
