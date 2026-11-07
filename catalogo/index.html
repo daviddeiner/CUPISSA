@@ -325,13 +325,10 @@
             </button>
             <div class="product-modal-grid grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="product-modal-media space-y-3">
-                    <div class="relative rounded-2xl overflow-hidden bg-slate-100 aspect-square border border-slate-100 group">
-                        <img id="opt-modal-img" src="" alt="Producto Cupissa" class="w-full h-full object-cover">
+                    <div class="relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 group flex items-center justify-center">
+                        <img id="opt-modal-img" src="" alt="Producto Cupissa" class="block w-full h-auto max-h-[520px] object-contain">
                         <div class="absolute top-3 left-3 flex flex-wrap gap-1" id="opt-modal-badges"></div>
-                        <button onclick="openFullImageModal()" class="absolute bottom-3 right-3 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-900 text-white rounded-xl text-[11px] font-bold backdrop-blur-md shadow-md transition-all flex items-center space-x-1.5 z-10">
-                            <i class="fa-solid fa-expand text-xs"></i>
-                            <span>Ver foto completa</span>
-                        </button>
+                        
                     </div>
                     <div class="flex items-center space-x-2 overflow-x-auto custom-scrollbar pb-1" id="opt-modal-thumbs"></div>
                 </div>
@@ -422,14 +419,13 @@
         </div>
     </div>
 
-    <!-- MODAL FOTO COMPLETA -->
+    <!-- VISOR DE IMÁGENES DEL CATÁLOGO (solo imágenes publicadas/recortadas) -->
     <div id="modal-full-image" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[70] flex items-center justify-center hidden p-4">
         <div class="relative max-w-4xl max-h-[90vh] w-full flex items-center justify-center">
             <button onclick="closeFullImageModal()" class="absolute -top-12 right-0 text-white hover:text-pink-400 text-2xl font-bold flex items-center space-x-2 transition-colors">
-                <span>Cerrar</span>
-                <i class="fa-solid fa-xmark"></i>
+                <span>Cerrar</span><i class="fa-solid fa-xmark"></i>
             </button>
-            <img id="full-modal-img" src="" alt="Foto completa del producto" class="max-h-[85vh] max-w-full object-contain rounded-2xl shadow-2xl">
+            <img id="full-modal-img" src="" alt="Imagen publicada de CUPISSA" class="max-h-[85vh] max-w-full object-contain rounded-2xl shadow-2xl">
         </div>
     </div>
 
@@ -484,10 +480,10 @@
     <script src="/shared/js/supabase-config.js"></script>
     <script src="/catalogo/assets/js/00-config-state.js"></script>
     <script src="/catalogo/assets/js/01-initialization.js"></script>
-    <script src="/catalogo/assets/js/02-product-data.js"></script>
-    <script src="/catalogo/assets/js/03-filters-search.js"></script>
-    <script src="/catalogo/assets/js/04-product-grid.js"></script>
-    <script src="/catalogo/assets/js/05-product-modal.js"></script>
+    <script src="/catalogo/assets/js/02-product-data.js?v=20261107-photo-crop"></script>
+    <script src="/catalogo/assets/js/03-filters-search.js?v=20261106-multifiltros-1"></script>
+    <script src="/catalogo/assets/js/04-product-grid.js?v=20261107-photo-crop"></script>
+    <script src="/catalogo/assets/js/05-product-modal.js?v=20261107-photo-crop"></script>
     <script src="/catalogo/assets/js/06-cart-favorites-state.js"></script>
     <script src="/catalogo/assets/js/07-cart.js"></script>
     <script src="/catalogo/assets/js/08-checkout.js"></script>
