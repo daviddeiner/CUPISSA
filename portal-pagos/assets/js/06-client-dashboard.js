@@ -57,20 +57,23 @@ async function loadClientInstallments() {
         container.innerHTML = '<p class="py-6 text-center text-xs text-slate-400">No fue posible cargar el detalle de cuotas.</p>';
         return;
     }
-    // Una cuota liquidada no es una deuda pendiente: excluirla de la tabla activa.
+    // Mostrar todas las cuotas, incluidas las pagadas, mientras exista una deuda activa.
+    // Ocultar la sección completa únicamente cuando el cliente no deba nada.
     const liveCreditIds = new Set((activeCredits || []).map(c => String(c.id)));
-    const pending = (data || []).filter(item => {
-        if (!liveCreditIds.has(String(item.credito_id))) return false;
-        const status = String(item.estado || '').trim().toUpperCase();
-        return !['PAGADO', 'PAGADA', 'CANCELADO', 'CANCELADA'].includes(status)
-            && Number(item.monto_pagado || 0) < Number(item.valor_cuota || 0);
-    });
-    if (!pending.length) {
-        container.innerHTML = '<p class="py-6 text-center text-xs text-slate-400">No tienes cuotas pendientes.</p>';
+    const installments = (data || []).filter(item => liveCreditIds.has(String(item.credito_id)));
+    const installmentsSection = container.closest('section') || container.parentElement;
+    const hasActiveDebt = (activeCredits || []).some(c => Number(c.deuda_actual || 0) > 0.009);
+    if (installmentsSection) installmentsSection.classList.toggle('hidden', !hasActiveDebt);
+    if (!hasActiveDebt) {
+        container.innerHTML = '';
         return;
     }
-    const rows = pending.map(item => {
-        const paid = String(item.estado || '').toUpperCase() === 'PAGADO';
+    if (!installments.length) {
+        container.innerHTML = '<p class="py-6 text-center text-xs text-slate-400">No hay cuotas registradas para las deudas activas.</p>';
+        return;
+    }
+    const rows = installments.map(item => {
+        const paid = ['PAGADO', 'PAGADA'].includes(String(item.estado || '').trim().toUpperCase()) || Number(item.monto_pagado || 0) >= Number(item.valor_cuota || 0) && Number(item.valor_cuota || 0) > 0;
         const statusClass = paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700';
         const status = paid ? 'PAGADA' : 'PENDIENTE';
         const due = item.fecha_vencimiento ? formatDate(item.fecha_vencimiento) : '—';
