@@ -1,27 +1,33 @@
-/**
- * CUPISSA | Portal de pagos / restauración de sesión
- * Código extraído de la versión original sin cambiar la lógica.
- */
-
-window.addEventListener('message', function(event) {
-            if (typeof event.data === 'object' && event.data !== null) {
-                if (event.data.type === 'COMMAND' || event.data.type === 'INITIALIZATION') {
-                    // Procesamiento interno
-                }
-            }
-        }, false);
-
-        window.addEventListener('DOMContentLoaded', async function() {
-            const savedSession = localStorage.getItem('cupissa_client_session');
-            if (savedSession) {
+/** CUPISSA | Restaura sesión compartida con Mi Perfil. */
+let cupissaPortalAuthSyncRunning = false;
+window.addEventListener('DOMContentLoaded', async function() {
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session?.user?.email && !cupissaPortalAuthSyncRunning) {
+            cupissaPortalAuthSyncRunning = true;
+            setTimeout(async () => {
                 try {
-                    currentClient = JSON.parse(savedSession);
-                    document.getElementById('client-login-card').classList.add('hidden');
-                    document.getElementById('client-dashboard').classList.remove('hidden');
-                    await loadClientDashboard();
-                } catch (e) {
-                    console.error("Error al restaurar sesión:", e);
-                    localStorage.removeItem('cupissa_client_session');
-                }
-            }
-        });
+                    const linked = await window.CUPISSAAuth.getLinkedAccount();
+                    if (linked?.client) await showClientDashboard(linked.client);
+                } catch (error) { console.warn('[CUPISSA PORTAL] No se sincronizó la sesión:', error); }
+                finally { cupissaPortalAuthSyncRunning = false; }
+            }, 0);
+        }
+        if (event === 'SIGNED_OUT') {
+            currentClient = null;
+            document.getElementById('client-dashboard')?.classList.add('hidden');
+            document.getElementById('client-login-card')?.classList.remove('hidden');
+        }
+    });
+    try {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        if (error) throw error;
+        if (!session?.user?.email) return;
+        const linked = await window.CUPISSAAuth.getLinkedAccount();
+        if (!linked?.client) throw new Error('La sesión está activa, pero el correo no está vinculado a una cuenta CUPISSA.');
+        await showClientDashboard(linked.client);
+    } catch (error) {
+        console.warn('No fue posible restaurar la sesión del portal:', error);
+        // No cerrar la sesión global: Perfil y Portal comparten autenticación.
+        document.getElementById('client-login-card')?.classList.remove('hidden');
+    }
+});
