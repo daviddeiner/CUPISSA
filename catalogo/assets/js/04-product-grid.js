@@ -27,19 +27,15 @@ function catalogProductCard(prod, options = {}) {
         <div>
             <div class="relative bg-slate-50 overflow-hidden flex items-center justify-center">
                 <img src="${mainFoto}" alt="${prod.nombre} - CUPISSA Colombia" title="${prod.nombre} - CUPISSA" loading="lazy" class="product-card-photo block w-full h-auto max-h-[380px] object-contain transition-transform duration-300">
-                <div class="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-col gap-1 items-start">
-                    ${(prod.temporadas?.length ? prod.temporadas : [prod.temporada]).filter(Boolean).slice(0, 2).map(season => `<span class="bg-pink-600 text-white font-black text-[8px] sm:text-[9px] uppercase tracking-wider px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full shadow-sm">${season}</span>`).join('')}
-                </div>
                 <button data-card-ignore-open type="button" onclick="toggleFavorite('${prod.id}', event)" class="absolute top-2 right-2 sm:top-3 sm:right-3 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/80 backdrop-blur-md text-slate-400 hover:text-pink-600 flex items-center justify-center transition-colors shadow-sm" aria-label="Agregar a favoritos">
                     <i class="${isFav ? 'fa-solid fa-heart text-pink-600 text-xs sm:text-sm' : 'fa-regular fa-heart text-xs sm:text-sm'}"></i>
                 </button>
             </div>
             <div class="p-2.5 sm:p-4 space-y-1 sm:space-y-2">
-                <span class="text-[9px] sm:text-[10px] font-black uppercase text-pink-600 tracking-wider">${(prod.subcategorias?.length ? prod.subcategorias : (prod.categorias?.length ? prod.categorias : [prod.subcategoria || prod.categoria || 'TEXTIL'])).join(' · ')}</span>
+                <span class="text-[9px] sm:text-[10px] font-black uppercase text-pink-600 tracking-wider">${(prod.temporadas?.length ? prod.temporadas : [prod.temporada]).filter(Boolean).join(' - ')}</span>
                 <h3 class="product-card-title font-extrabold text-slate-900 text-[10px] leading-snug sm:text-xs uppercase tracking-tight">${prod.nombre}</h3>
                 <div class="product-activity" data-activity-product="${String(prod.id)}" hidden aria-live="polite">
                     <span><i class="fa-regular fa-eye"></i><strong data-activity-viewers>20+</strong> personas viendo</span>
-                    <span><i class="fa-solid fa-bag-shopping"></i><strong data-activity-purchases>10+</strong> comprados hoy</span>
                     <small class="activity-disclaimer"></small>
                 </div>
             </div>
