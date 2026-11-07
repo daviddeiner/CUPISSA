@@ -61,6 +61,30 @@ function closeProfileModal() {
 
 window.addEventListener('message', event => {
     if (event.origin !== window.location.origin || !event.data) return;
+    if (event.data.type === 'CUPISSA_GOOGLE_TOP_LEVEL') {
+        const target = new URL(event.data.url, window.location.origin);
+        if (target.origin !== window.location.origin || target.pathname !== '/perfil/' || !['login', 'register'].includes(target.searchParams.get('cupissa_google_popup'))) return;
+        window.location.assign(target.toString());
+        return;
+    }
+    if (event.data.type === 'CUPISSA_GOOGLE_FINISHED') {
+        if (event.data.next === 'checkout') {
+            window.location.href = '/checkout';
+            return;
+        }
+        const frame = document.getElementById('profile-frame');
+        if (frame) {
+            // Recargar únicamente el perfil integrado para leer la sesión nueva.
+            frame.src = frame.dataset.src || '/perfil?embedded=1';
+        }
+        const modal = document.getElementById('modal-profile');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('profile-open');
+        }
+        return;
+    }
     if (event.data.type === 'CUPISSA_PROFILE_CLOSE') closeProfileModal();
     if (event.data.type === 'CUPISSA_PROFILE_CHECKOUT') {
         closeProfileModal();
